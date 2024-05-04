@@ -160,7 +160,7 @@ void gsBasis<T>::linearCombination_into(const gsMatrix<T> & coefs,
     const index_t stride = values.rows() / actives.rows();
 
     GISMO_ASSERT( actives.rows() * stride == values.rows(),
-                  "Number of values and actives does not fit together");
+                  "Number of values "<<values.rows()<< " and actives "<<actives.rows()<<" does not fit together");
 
     result.resize( tarDim * stride, numPts );
     result.setZero();
@@ -184,9 +184,9 @@ inline gsMatrix<T> gsBasis<T>::laplacian(const gsMatrix<T> & u ) const
 }
 
 template<class T> inline
-void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & result) const
+gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 {
-    result.resize( u.cols(), this->size() );
+    gsSparseMatrix<T> result( u.cols(), this->size() );
     gsMatrix<T> ev;
     gsMatrix<index_t> act;
 
@@ -205,6 +205,7 @@ void gsBasis<T>::collocationMatrix(const gsMatrix<T> & u, gsSparseMatrix<T> & re
     }
 
     result.makeCompressed();
+    return result;
 }
 
 template<class T> inline
@@ -216,8 +217,7 @@ memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> cons
     GISMO_ASSERT (this->size() == pts.cols() , "Expecting as many points as the basis functions." );
     GISMO_ASSERT (this->size() == vals.cols(), "Expecting as many values as the number of points." );
 
-    gsSparseMatrix<T>  Cmat;
-    collocationMatrix(pts, Cmat);
+    gsSparseMatrix<T>  Cmat = collocationMatrix(pts);
     gsMatrix<T> x ( this->size(), vals.rows());
 
     // typename gsSparseSolver<T>::BiCGSTABIdentity solver( Cmat );
@@ -576,11 +576,11 @@ void gsBasis<T>::unrefineElements_withCoefs(gsMatrix<T> &,std::vector<index_t> c
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine(int, int)
+void gsBasis<T>::uniformRefine(int, int, int)
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
-void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int )
+void gsBasis<T>::uniformRefine_withCoefs(gsMatrix<T>& , int , int , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -590,6 +590,10 @@ void gsBasis<T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> &,
 
 template<class T>
 void gsBasis<T>::uniformCoarsen(int)
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
+void gsBasis<T>::uniformCoarsen_withCoefs(gsMatrix<T>& , int )
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
@@ -681,6 +685,11 @@ void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
 { GISMO_NO_IMPLEMENTATION }
 
 template<class T>
+void gsBasis<T>::matchWith(const boundaryInterface &, const gsBasis<T> &,
+               gsMatrix<index_t> &, gsMatrix<index_t> &, index_t) const
+{ GISMO_NO_IMPLEMENTATION }
+
+template<class T>
 T gsBasis<T>::getMinCellLength() const
 {
     const domainIter it = this->makeDomainIterator();
@@ -705,6 +714,52 @@ T gsBasis<T>::getMaxCellLength() const
     }
     return h;
 }
+
+
+template<class T> inline
+std::vector<gsSparseMatrix<T> >
+gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> & u)
+{
+    int dim = b.domainDim();
+    std::vector<gsSparseMatrix<T>> result(dim+1, gsSparseMatrix<T>( u.cols(), b.size() ));
+    std::vector<gsMatrix<T>> ev;
+    gsMatrix<index_t> act;
+
+    b.evalAllDers_into  (u.col(0), 1, ev);
+    b.active_into(u.col(0), act);
+    result[0].reservePerColumn( act.rows() );
+    result[1].reservePerColumn( act.rows() );
+    if (dim==2)
+        result[2].reservePerColumn( act.rows() );
+    for (index_t i=0; i!=act.rows(); ++i)
+    {
+        result[0].insert(0, act.at(i) ) = ev[0].at(i);
+        result[1].insert(0, act.at(i) ) = ev[1].at(dim*i);
+        if (dim == 2)
+            result[2].insert(0, act.at(i) ) = ev[1].at(dim*i+1);
+    }
+    for (index_t k=1; k!=u.cols(); ++k)
+    {
+        b.evalAllDers_into  (u.col(k), 1, ev );
+        b.active_into(u.col(k), act);
+        for (index_t i=0; i!=act.rows(); ++i)
+        {
+            result[0].insert(k, act.at(i) ) = ev[0].at(i);
+            result[1].insert(k, act.at(i) ) = ev[1].at(dim*i);
+            if (dim == 2)
+                result[2].insert(k, act.at(i) ) = ev[1].at(dim*i +1);
+        }
+    }
+
+    result[0].makeCompressed();
+    result[1].makeCompressed();
+    if (dim == 2)
+        result[2].makeCompressed();
+    return result;
+}
+
+
+
 
 // gsBasis<T>::linearComb(active, evals, m_tmpCoefs, result);
 // gsBasis<T>::jacobianFromGradients(active, grads, m_tmpCoefs, result);

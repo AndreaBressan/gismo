@@ -210,7 +210,7 @@ private:
         {
             lower[i]  = *curElement[i];
             upper[i]  = *(curElement[i]+1);
-            center[i] = T(0.5) * (lower[i] + upper[i]);
+            center[i] = (T)(0.5) * (lower[i] + upper[i]);
         }
         lower[dir]  = 
         upper[dir]  =
@@ -219,7 +219,7 @@ private:
         {
             lower[i]  = *curElement[i];
             upper[i]  = *(curElement[i]+1);
-            center[i] = T(0.5) * (lower[i] + upper[i]);
+            center[i] = (T)(0.5) * (lower[i] + upper[i]);
         }
 
         //gsDebug<<"lower: "<< lower.transpose() <<", upper="<<upper.transpose() <<"\n";
@@ -261,7 +261,9 @@ private:
     gsVector<T> lower, upper;
 
 public:
+#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+#   undef Eigen
 }; // class gsTensorDomainBoundaryIterator
 
 

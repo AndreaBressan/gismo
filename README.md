@@ -9,7 +9,6 @@
 
 ======================================================================
 =====             Geometry plus Simulation modules               =====
-=====                     version 21.12 Alpha                    =====
 =====                   https://github.com/gismo                 =====
 ======================================================================
 ```
@@ -17,17 +16,16 @@
 # Continuous Integration status
 | **System** | **Status** | **More information** |
 |------------|------------|----------------------|
-| [CDash](https://cdash-ci.inria.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.inria.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.inria.fr/index.php?project=Gismo) | Report results from all builds |
-| [Appveyor](https://ci.appveyor.com/project/gismo/gismo)  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[appVeyor]) | Windows MSVC 14.0 |
-| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | MacOS XCode9-12 |
-| [Codeship](https://app.codeship.com/projects/123289)  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[codeship]) | |
-| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
-| [GitHub Actions](https://github.com/gismo/gismo/actions) | [![Build Status](https://github.com/gismo/gismo/workflows/gismo/badge.svg?branch=stable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[actions]) | Latest Linux/MacOS/Windows |
-| [Jenkins](https://ci.inria.fr/gismo/job/gismo/job/gismo/job/stable) | [![Build Status](https://ci.inria.fr/gismo/buildStatus/icon?job=gismo%2Fgismo%2Fstable)](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[jenkins]) |VMs for Linux/MacOS/Windows |
-| GCC Farm | [Status](https://cdash-ci.inria.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
+| [CDash](https://cdash-ci.irisa.fr/index.php?project=Gismo) | [![cdash](https://img.shields.io/website?down_color=lightgrey&down_message=offline&label=CDash&up_color=green&up_message=up&url=https%3A%2F%2Fcdash-ci.irisa.fr%2Findex.php%3Fproject%3DGismo)](https://cdash-ci.irisa.fr/index.php?project=Gismo) | Report results from all builds |
+| [Appveyor](https://ci.appveyor.com/project/gismo/gismo)  | [![Appveyor status](https://ci.appveyor.com/api/projects/status/abps59xbt1gjwci1/branch/stable?svg=true)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[appVeyor]) | Windows MSVC 14.0 |
+| [Circle CI](https://circleci.com/gh/gismo/gismo) | [![Circle CI](https://circleci.com/gh/gismo/gismo.svg?style=svg)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[cci]) | MacOS XCode 14.3 (x86_64/arm64) |
+| [Codeship](https://app.codeship.com/projects/123289)  | [![Codeship Status](https://app.codeship.com/projects/2aa19360-8998-0133-39fd-66416d65b267/status?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[codeship]) | |
+| [GitLab](https://gitlab.com/gismo-ci/gismo/-/pipelines)    | [![pipeline status](https://gitlab.com/gismo-ci/gismo/badges/gitlab_ci/pipeline.svg)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gitlab-ci]) | Linux non-default configurations |
+| [GitHub Actions](https://github.com/gismo/gismo/actions) | [![Build Status](https://github.com/gismo/gismo/workflows/gismo/badge.svg?branch=stable)](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[actions]) | Latest Linux/MacOS/Windows |
+| [GitLab-Inria]() | [![Build Status](https://gitlab.inria.fr/gismo/gismo/badges/stable/pipeline.svg)](https://gitlab.inria.fr/gismo/gismo/-/pipelines) | CI at Inria |
+| GCC Farm | [Status](https://cdash-ci.irisa.fr/index.php?project=Gismo&filtercount=1&field1=site&compare1=63&value1=[gccfarm]) | Builders from the GCC Farm   |
 | [OBS](https://build.opensuse.org/package/show/home:filiatra/gismo) | [binaries](https://software.opensuse.org/download/package?project=home:filiatra&package=gismo)  | Upstream package builds for many Linux distributions |
 | [Launchpad](https://code.launchpad.net/~g+smo/+recipe/g+smo-daily) |[binaries](https://launchpad.net/~g+smo/+archive/ubuntu/upstream/+packages)  | Upstream package builds for Ubuntu distributions |
-
 
 This README file contains brief information. More details are found in
 the [Wiki pages](https://github.com/gismo/gismo/wiki).
@@ -51,6 +49,7 @@ or as a tar.gz or zip file:
   - MS Windows
   - Linux
   - macOS
+  - FreeBSD
 
 * Configuration: [CMake 2.8.12](https://cmake.org) or newer.
 
@@ -83,14 +82,22 @@ at a new, empty folder (in-source builds are disabled).
   choose your own build folder and execute CMake pointing to the
   sources.
 
-* On **MS Windows**: MS Visual Studio has [built-in CMake
-  support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
-  since version 2015. Alternatively, you can run the `cmake-gui` tool
-  (from an environment that is configured with your compiler) to
-  generate makefiles (or Visual Studio project files). Then execute
-  the make tool to launch compilation. Alternatively, use the
-  QtCreator GUI and open the CMakeLists.txt file on the root folder to
-  create a QtCreator project.
+* On **MS Windows**: 
+     * To compile G+Smo natively, you can use MS Visual Studio which has [built-in CMake
+       support](https://docs.microsoft.com/en-us/cpp/build/cmake-projects-in-visual-studio)
+       since version 2015. Alternatively, you can run the `cmake-gui` tool
+       (from an environment that is configured with your compiler) to
+       generate makefiles (or Visual Studio project files). Then execute
+       the make tool to launch compilation. Alternatively, use the
+       QtCreator GUI and open the CMakeLists.txt file on the root folder to
+       create a QtCreator project.
+     * Another option is to install [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install)
+       which:
+       > lets developers install a Linux distribution [...] and use Linux applications, utilities, 
+       > and Bash command-line tools directly on Windows, unmodified, without the overhead of 
+       > a traditional virtual machine or dualboot setup.
+     
+       Then you can download, compile and use G+Smo as if your were using a native Linux machine.
 
 After successful compilation a dynamic library is created in `./lib` and
 executable example programs are output at the `./bin` subdirectory of
@@ -105,6 +112,21 @@ to obtain the Doxygen documentation in HTML format. The main doxygen
 page is at `./doc/html/index.html`.
 
 More information at https://github.com/gismo/gismo/wiki
+
+# Optional modules
+
+There is a number of optional modules that may be enabled.
+
+| **Name** | **Description** |
+|----------|-----------------|
+|[gsOpenCascade](https://github.com/gismo/gismo/tree/stable/extensions/gsOpenCascade#readme)| Extends functionality using OpenCascade|
+|[gsElasticity](https://github.com/gismo/gsElasticity#readme)|  |
+|[gsKLShell](https://github.com/gismo/gsKLShell#readme)|  |
+|[gsStructuralAnalysis](https://github.com/gismo/gsStructuralAnalysis#readme)|  |
+
+To enable e.g. gsSpectra and gsOpenCascade set the following option in CMake:
+
+ ``` -D GISMO_OPTIONAL="gsSpectra;gsOpenCascade" ```
 
 # Configuration Options
 
@@ -126,7 +148,7 @@ include double, long double, float.
   If set to one or more of the options available for GISMO_COEFF_TYPE
   the G+Smo library is compiled with extra arithmetic types enabled.
 
-* GISMO_EXTRA_DEBUG       *OFF*
+* GISMO_WITH_XDEBUG       *OFF*
 
   If set to ON additional debugging tools are enabled during
 compilation. These include checked iterators for GCC and MSVC
@@ -149,7 +171,7 @@ executables are created in build-folder/bin.
   If enabled the tests in the unittests folder are compiled, and an
 executable is created in build-folder/bin.
 
-* GISMO_BUILD_AXL         *OFF*
+* GISMO_PLUGIN_AXL         *OFF*
 
   If enabled the plugin for Axel modeler is compiled (requires Axel).
 
@@ -158,10 +180,9 @@ executable is created in build-folder/bin.
   If enabled the extensions using functionalities of Parasolid geometric
 kernel are compiled (requires Parasolid).
 
-* GISMO_WITH_ONURBS       *OFF*
+* gsOpennurbs
 
-  If enabled the extension for reading and writing of Rhinoceros' 3DM is
-compiled.
+  Extension for reading and writing of Rhinoceros' 3DM.
 
 * CMAKE_INSTALL_PREFIX   (system dependent)
 
@@ -222,6 +243,12 @@ eleven modules are present as sub-folders:
 
   Files related to doxygen documentation.
 
+# Third-party repository distribution
+
+- openSUSE Science Project: https://en.opensuse.org/openSUSE:Science_Math
+- FreeBSD port: https://www.freshports.org/math/gismo/
+- Ubuntu upstream packages: https://launchpad.net/~g+smo/+archive/ubuntu/upstream
+
 # Contact and support
 
 * Wiki pages:
@@ -232,6 +259,9 @@ eleven modules are present as sub-folders:
 
   https://github.com/gismo/gismo/issues
 
+* Questions (Q&A):
+
+  https://github.com/gismo/gismo/discussions/categories/q-a
 
 # People
 

@@ -16,6 +16,7 @@
 #include <gsIO/gsOptionList.h>
 #include <gsAssembler/gsGaussRule.h>
 #include <gsAssembler/gsLobattoRule.h>
+#include <gsAssembler/gsNewtonCotesRule.h>
 #include <gsAssembler/gsPatchRule.h>
 #include <gsAssembler/gsOverIntegrateRule.h>
 
@@ -25,6 +26,8 @@ namespace gismo
 /// Helper class for obtaining a quadrature rule
 struct gsQuadrature
 {
+    typedef GISMO_COEFF_TYPE Real;
+  
     /// Quadrature rule types
     enum rule
     {
@@ -46,7 +49,7 @@ struct gsQuadrature
                              const gsOptionList & options, short_t fixDir = -1)
     {
         const index_t qu  = options.askInt("quRule", GaussLegendre);
-        const T       quA = options.getReal("quA");
+        const Real    quA = options.getReal("quA");
         const index_t quB = options.getInt ("quB");
         const gsVector<index_t> nnodes = numNodes(basis,quA,quB,fixDir);
         return get<T>(qu, nnodes);
@@ -58,8 +61,8 @@ struct gsQuadrature
                       getPtr(const gsBasis<T> & basis,
                              const gsOptionList & options, short_t fixDir = -1)
     {
-                const index_t qu   = options.askInt("quRule", GaussLegendre);
-        const T       quA  = options.getReal("quA");
+        const index_t qu   = options.askInt("quRule", GaussLegendre);
+        const Real    quA  = options.getReal("quA");
         const index_t quB  = options.getInt ("quB");
         const bool    over = options.askSwitch ("overInt", false);  // use overintegration?
 
@@ -83,7 +86,7 @@ struct gsQuadrature
                     Uses quadrature rule with quA and quB for the interior
                     elements and one with quAb and quBb for the boundary elements
                 */
-                const T       quAb  = options.askReal("quAb",quA+1);
+                const Real    quAb  = options.askReal("quAb",quA+1);
                 const index_t quBb  = options.askInt ("quBb",quB);
 
                 const gsVector<index_t> nnodesI = numNodes(basis,quA,quB,fixDir);
@@ -147,7 +150,7 @@ struct gsQuadrature
     /// of \a basis
     template<class T>
     static gsVector<index_t> numNodes(const gsBasis<T> & basis,
-                               const T quA, const index_t quB, short_t fixDir = -1)
+                               const Real quA, const index_t quB, short_t fixDir = -1)
     {
         const short_t d  = basis.dim();
         GISMO_ASSERT( fixDir < d && fixDir>-2, "Invalid input fixDir = "<<fixDir);
@@ -161,9 +164,9 @@ struct gsQuadrature
         short_t i;
         for(i=0; i!=fixDir; ++i )
             //note: +0.5 for rounding
-            nnodes[i] = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
+            nnodes[i] = cast<Real,index_t>(quA * basis.degree(i) + quB + 0.5);
         for(++i; i<d; ++i )
-            nnodes[i] = cast<T,index_t>(quA * basis.degree(i) + quB + 0.5);
+            nnodes[i] = cast<Real,index_t>(quA * basis.degree(i) + quB + 0.5);
         return nnodes;
     }
 };

@@ -68,7 +68,7 @@ public:
     /// the matrix, you might use \ref makeMatrixOp() to obtain a shared pointer
     /// to a gsLinearOperator which can be supplied alternatively.
     template<typename Derived>
-    gsIterativeSolver( const Eigen::EigenBase<Derived> & mat,
+    gsIterativeSolver( const gsEigen::EigenBase<Derived> & mat,
                        const LinOpPtr& precond)
     : m_mat(makeMatrixOp(mat.derived())),
       m_precond(precond),
@@ -249,13 +249,13 @@ public:
     }
 
 protected:
-    const LinOpPtr m_mat;             ///< The matrix/operator to be solved for
-    LinOpPtr       m_precond;         ///< The preconditioner
-    index_t        m_max_iters;       ///< The upper bound for the number of iterations
-    T              m_tol;             ///< The tolerance for m_error to be reached
-    index_t        m_num_iter;        ///< The number of iterations performed
-    T              m_rhs_norm;        ///< The norm of the right-hand-side
-    T              m_error;           ///< The relative error as absolute_error/m_rhs_norm
+    const LinOpPtr     m_mat;             ///< The matrix/operator to be solved for
+    LinOpPtr           m_precond;         ///< The preconditioner
+    index_t            m_max_iters;       ///< The upper bound for the number of iterations
+    gsOptionList::Real m_tol;             ///< The tolerance for m_error to be reached
+    index_t            m_num_iter;        ///< The number of iterations performed
+    T                  m_rhs_norm;        ///< The norm of the right-hand-side
+    T                  m_error;           ///< The relative error as absolute_error/m_rhs_norm
 };
 
 /// \brief Print (as string) operator for iterative solvers

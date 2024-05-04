@@ -39,7 +39,7 @@ void gsBoehm(
     if (r==1)
         return gsBoehmSingle(knots, coefs, val, update_knots);
 
-    GISMO_ASSERT( coefs.rows() == index_t(knots.size() - knots.degree()-1),
+    GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - knots.degree()-1),
                   "Incompatible coefficients("<<coefs.rows()
                   <<")/knots("<<knots.size()<<")/degree("<<knots.degree()<<")" ) ;
 
@@ -100,7 +100,7 @@ void gsBoehmSingle(
     )
 {
 
-    GISMO_ASSERT( coefs.rows() == index_t(knots.size() - knots.degree()-1),
+    GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - knots.degree()-1),
                   "Incompatible coefficients/knots" ) ;
 
     int k = knots.iFind(val)-knots.begin();
@@ -118,7 +118,7 @@ void gsBoehmSingle(
     for( index_t i = k; i>=k-p+1; --i )
     {
         a = (val - knots[i]) / (knots[i+p] - knots[i]);
-        coefs.row(i) = (1-a) * coefs.row(i-1) + a * coefs.row(i);
+        coefs.row(i) = (T(1)-a) * coefs.row(i-1) + a * coefs.row(i);
     }
 
     // Update knot vector
@@ -152,7 +152,7 @@ void gsBoehmSingle( iter knot,   // Knot iterator
     for( index_t i = p ; i>=1; --i )
     {
         a = (val - *knot) / ( *(knot+p) - *knot );
-        coefs.row(i) = (1-a) * coefs.row(i-1) + a * coefs.row(i);
+        coefs.row(i) = (T(1)-a) * coefs.row(i-1) + a * coefs.row(i);
         knot++;
     }
 }
@@ -222,7 +222,7 @@ void gsBoehmRefine( KnotVectorType & knots,
 
             T alfa = nknots[k+l] - newKnot;
 
-            if( math::abs(alfa) == 0.0 )
+            if( math::abs(alfa) == T(0.0) )
                 coefs.row(ind-1) = coefs.row(ind);
             else
             {
@@ -473,7 +473,7 @@ void gsTensorBoehmRefine(
                 const T alfa = alpha[j][ell - 1];
                 const int index = k - p + ell;
 
-                if (math::abs(alfa) == 0.0)
+                if (math::abs(alfa) == T(0.0))
                     new_coefs.row(new_ind + (index - 1) * new_step) =
                             new_coefs.row(new_ind + index * new_step);
                 else
@@ -510,6 +510,9 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
         const bool update_knots)
 {
 
+    if (valBegin==valEnd)
+        return;
+
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
     const index_t nik = std::distance(valBegin, valEnd); // number of inserted knots
@@ -521,7 +524,6 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
 
     const index_t a =  knots.iFind(*valBegin)     - knots.begin();
     const index_t b = (knots.iFind(*(valEnd - 1)) - knots.begin()) + 1;
-
 
     // allocate a memory for new knots and new control points
     gsSparseVector<T> nknots(b + p + nik);
@@ -633,7 +635,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
                 if (act_size_of_coefs[direction] < mindex)
                     break;
 
-                if (math::abs(alfa) == 0.0)
+                if (math::abs(alfa) == T(0.0))
                 {
                     if (mindex == act_size_of_coefs[direction])
                         coefs.row(ind + (mindex - 1) * step) = zero.row(0);

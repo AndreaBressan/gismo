@@ -1,6 +1,6 @@
 /** @file gsMappedSingleBasis.h
 
-    @brief Provides declaration of Basis abstract interface.
+    @brief Implementation of a piece of the gsMappedBasis
 
     This file is part of the G+Smo library.
 
@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): F. Buchegger
+    Author(s): H.M. Verhelst, P. Weinmueller
 */
 
 #pragma once
@@ -104,7 +104,7 @@ public:
     }
 
     /// Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    void numActive_into(const gsMatrix<T> & u, gsVector<unsigned>& result) const
+    void numActive_into(const gsMatrix<T> & u, gsVector<index_t>& result) const
     {
         // Assuming all patches have the same degree
         m_basis->numActive_into(m_index,u,result);
@@ -116,11 +116,42 @@ public:
         return m_basis->getBase(m_index).support();
     }
 
-
-    /// Returns a bounding box for the basis' domain
-    gsMatrix<T> support(const index_t & i) const
+    /// Returns a bounding box for basis function \a kk domain on the domain of *this
+    gsMatrix<T> support(const index_t & kk) const
     {
-        return m_basis->getBase(m_index).support(i);
+        typename gsMappedBasis<d,T>::IndexContainer sourceIndices;
+        m_basis->getMapper().targetToSource(kk,sourceIndices);
+        // Get the support on the whole patch
+        gsMatrix<T> supp = gsMatrix<T>::Zero(d,2);
+        gsMatrix<T> localSupp;
+        for (typename gsMappedBasis<d,T>::IndexContainer::iterator i = sourceIndices.begin(); i!=sourceIndices.end(); i++)
+        {
+            // Only consider local basis functions on the same patch
+            if (m_basis->getPatch(*i)!=m_index) continue;
+            // Get the support of the basis function
+            localSupp = m_basis->getBase(m_index).support(m_basis->getPatchIndex(*i));
+            // If no support is available, we assign it
+            if (supp.rows()==0 && supp.cols()==0)
+            {
+                supp = localSupp;
+                continue;
+            }
+            // If a support is available, we increase it if needd
+            for (index_t dim=0; dim!=d; dim++)
+            {
+                if (localSupp(dim,0) < supp(dim,0))
+                    supp(dim,0) = localSupp(dim,0);
+                if (localSupp(dim,1) > supp(dim,1))
+                    supp(dim,1) = localSupp(dim,1);
+            }
+        }
+        return supp;
+        // return m_basis->getBase(m_index).support();
+    }
+    /// Returns the boundary basis on side s
+    gsBasis<T>* boundaryBasis_impl(boxSide const & s) const
+    {
+        return m_basis->getBase(m_index).boundaryBasis(s).release(); // Wrong, Should return 1-D mappedSingleBasis
     }
 
     /// Evaluates the non-zero basis functions at value u.
@@ -145,8 +176,9 @@ public:
     /// Evaluates the (partial)derivatives of the i-th basis function at (the columns of) u.
     void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
     {
-        GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(result);
-        GISMO_NO_IMPLEMENTATION;
+        //GISMO_UNUSED(i); GISMO_UNUSED(u); GISMO_UNUSED(result);
+        //GISMO_NO_IMPLEMENTATION;
+        m_basis->derivSingle_into(m_index,i,u,result);
     }
 
     /// Evaluates the (partial) derivatives of the nonzero basis functions at points \a u into \a result.
@@ -197,7 +229,8 @@ public:
     std::ostream &print(std::ostream &os) const
     {
         GISMO_UNUSED(os);
-        GISMO_NO_IMPLEMENTATION;
+        os << "Mapped basis function "<< m_index << " / "<< m_basis->size()-1 <<"\n";
+        return os;
     }
 
     /// Prints the object as a string with extended details.
@@ -221,18 +254,21 @@ public:
     /// Returns the polynomial degree.
     short_t maxDegree() const
     {
+        // TODO Not always working: make it more general
         return degree();
     }
 
     /// Returns the polynomial degree.
     short_t minDegree() const
     {
+        // TODO Not always working: make it more general
         return degree();
     }
 
     /// Returns the polynomial degree.
     short_t degree() const
     {
+        // TODO Not always working: make it more general
         return m_basis->maxDegree();                                   // must fix this (just took max_degree)
     }
 
@@ -273,21 +309,26 @@ public:
     /// Return the 1-d basis of the underlying tensor product basis for the \a i-th parameter component.
     const gsBasis<T>& component(short_t i) const
     {
+        // TODO Not always working: make it more general
         return m_basis->getBase(m_index).component(i);
     }
 
     gsBasis<T>& component(short_t i)
     {
+        // TODO Not always working: make it more general
+        // return gsMappedSingleBasisComponent<d-1,T> (this, i);
         return m_basis->getBase(m_index).component(i);
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
+        // TODO Not always working: make it more general
         return m_basis->getBase(m_index).makeDomainIterator();
     }
 
     typename gsBasis<T>::domainIter makeDomainIterator(const boxSide & s) const
     {
+        // TODO Not always working: make it more general
         return m_basis->getBase(m_index).makeDomainIterator(s);
     }
 
@@ -295,10 +336,39 @@ public:
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const
     {
         std::vector<index_t> temp, rtemp;
-        m_basis->addLocalIndizesOfPatchSide(patchSide(m_index,s),offset,temp);
+        m_basis->addLocalIndicesOfPatchSide(patchSide(m_index,s),offset,temp);
         m_basis->getMapper().sourceToTarget(temp,rtemp);
+
+        // Better way for offset one: compute (anchors()) the normal derivatives at the boundary and return the indices
+        if (offset == 1) // Small fix
+        {
+            GISMO_ASSERT(offset==1, "The indices of boundaryOffset(s,1) "
+                                    "will be substract from boundaryOffset(s,0)");
+
+            std::vector<index_t> diff, temp2, rtemp2;
+
+            m_basis->addLocalIndicesOfPatchSide(patchSide(m_index,s),0,temp2);
+            m_basis->getMapper().sourceToTarget(temp2,rtemp2);
+            // Subtract the indizes of Offset = 0
+            std::set_difference(rtemp.begin(), rtemp.end(), rtemp2.begin(), rtemp2.end(),
+                        std::inserter(diff, diff.begin()));
+            rtemp = diff;
+        }
+
         return makeMatrix<index_t>(rtemp.begin(),rtemp.size(),1 );
     }
+
+    index_t functionAtCorner(boxCorner const & c) const
+    {
+        index_t cindex = m_basis->getBase(m_index).functionAtCorner(c);
+        cindex = m_basis->_getLocalIndex(m_index,cindex);
+        GISMO_ENSURE(m_basis->getMapper().sourceIsId(cindex),"Corner function has no identity map, i.e. there are more than 1 functions associated to the corner?");
+        std::vector<index_t> indices;
+        m_basis->getMapper().sourceToTarget(cindex,indices);
+        GISMO_ASSERT(indices.size()==1,"Size of the indices returned for the corner basis function should be 1 but is "<<indices.size()<<". Otherwise, there are more than 1 functions associated to the corner");
+        return indices.front();
+    }
+
     
 // Data members
 private:
@@ -307,5 +377,15 @@ private:
 
 }; // class gsMappedSingleBasis
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsMappedSingleBasis
+   */
+  // void pybind11_init_gsMappedSingleBasis1(pybind11::module &m);
+  void pybind11_init_gsMappedSingleBasis2(pybind11::module &m);
+  // void pybind11_init_gsMappedSingleBasis3(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

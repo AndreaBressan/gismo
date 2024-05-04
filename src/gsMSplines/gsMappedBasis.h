@@ -19,6 +19,8 @@
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsWeightMapper.h>
 #include <gsCore/gsDomainIterator.h>
+#include <gsCore/gsPiecewiseFunction.h>
+#include <gsCore/gsBasisFun.h>
 
 namespace gismo
 {
@@ -42,7 +44,7 @@ private:
     typedef typename std::vector<index_t>::const_iterator ConstIndexIter;
     typedef typename std::vector<T> WeightContainer;
     typedef typename std::vector<T>::const_iterator ConstWeightIter;
-    typedef Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
+    typedef gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
 
     typedef memory::unique_ptr< gsDomainIterator<T> > domainIter;
 
@@ -56,9 +58,8 @@ public:
     gsMappedBasis() : m_mapper(nullptr)
     { }
 
-    gsMappedBasis(gsMultiPatch<T> const & mp, std::string pathToMap );
-
-    gsMappedBasis(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m): m_mapper(nullptr)
+    gsMappedBasis(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m)
+    : m_mapper(nullptr)
     {
         init(mb,m);
     }
@@ -71,20 +72,17 @@ public:
     {
         GISMO_ASSERT(mb.domainDim()==d, "Error in dimensions");
         m_topol  = mb.topology();
+
         delete m_mapper;
         m_mapper = new gsWeightMapper<T>(m);
 
         freeAll(m_bases);
         m_bases.reserve(mb.nBases());
+        cloneAll(mb.patchBases(),m_bases);
         m_sb.clear();
-        m_sb.reserve(mb.nBases());
-        unsigned q = 0;
-        for ( typename std::vector<BasisType*>::const_iterator
-                  it = mb.begin(); it != mb.end(); ++it, ++q )
-        {
-            m_bases.push_back( (*it)->clone().release() );
+        m_sb.reserve(m_bases.size());
+        for ( size_t q=0; q!=m_bases.size(); ++q )
             m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-        }
 
         m_mapper->optimize(gsWeightMapper<T>::optSourceToTarget);
     }
@@ -97,15 +95,23 @@ public:
     //////////////////////////////////////////////////
 
     /// getter for (const) m_bases[i]
-    BasisType const & getBase(int i) const
+    BasisType const & getBase(index_t i) const
     { return *m_bases[i]; }
 
     /// getter for m_bases[i]
-    BasisType & getBase(int i)
+    BasisType & getBase(index_t i)
     { return *m_bases[i]; }
 
      /// getter for m_bases
     const std::vector<BasisType*> getBases() const;
+
+     /// getter for m_bases
+    std::vector<BasisType*> getBasesCopy() const
+    {
+        std::vector<BasisType*> bases;
+        cloneAll(m_bases,bases);
+        return bases;
+    }
 
     /// getter for m_mapper
     gsWeightMapper<T> const & getMapper() const
@@ -142,18 +148,20 @@ public:
     index_t size(const index_t index) const;
     index_t size() const { return m_mapper->getNrOfTargets(); }
 
+    index_t globalSize() const { return m_mapper->getNrOfTargets(); }
+
     /// Returns the number of local basis functions in the basis
-    unsigned localSize() const { return m_mapper->getNrOfSources(); }
+    index_t localSize() const { return m_mapper->getNrOfSources(); }
 
     /// Returns the number of local basis functions of the patch with given \a index in the basis
-    unsigned localSize(const int index) const
+    index_t localSize(const index_t index) const
     { return m_bases[index]->size(); }
 
     /// Returns the maximal polynomial degree of the patches.
     short_t maxDegree() const;
 
     /// Returns the polynomial degree of direction \a i of \a patch
-    short_t degree(const unsigned patch,const short_t i) const
+    short_t degree(const index_t patch,const short_t i) const
     { return m_bases[patch]->degree(i); }
 
     /// returns the amount of patches of the multi patch
@@ -162,7 +170,7 @@ public:
 
 private:
     /// helper function for boundary and innerBoundaries
-    void addLocalIndizesOfPatchSide(const patchSide& ps,unsigned offset,std::vector<index_t>& locals) const;
+    void addLocalIndicesOfPatchSide(const patchSide& ps,index_t offset,std::vector<index_t>& locals) const;
 
 public:
     void reorderDofs(const gsPermutationMatrix& permMatrix)
@@ -179,30 +187,30 @@ public:
 
     /// gets all indices of global basis functions on the boundary
     /// upto a given offset
-    void boundary(std::vector<index_t> & indices,unsigned offset = 0) const;
+    void boundary(std::vector<index_t> & indices,index_t offset = 0) const;
 
     /// gets all indices of global basis functions on the inner boundary
     /// upto a given offset
-    void innerBoundaries(std::vector<index_t> & indices,unsigned offset = 0) const;
+    void innerBoundaries(std::vector<index_t> & indices,index_t offset = 0) const;
 
     /// gives back the gsMappedSingleBasis object set to the patch i, which
     /// ressembles the composite basis on one patch
-    gsMappedSingleBasis<d,T> & getMappedSingleBasis(const unsigned i)
+    gsMappedSingleBasis<d,T> & getMappedSingleBasis(const index_t i) const
     {
-        if (m_sb.empty())
-        {
-            m_sb.reserve(m_bases.size());
-            for (size_t q = 0; q!=m_bases.size(); ++q)
-                m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-        }
+        // if (m_sb.empty())
+        // {
+        //     m_sb.reserve(m_bases.size());
+        //     for (size_t q = 0; q!=m_bases.size(); ++q)
+        //         m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
+        // }
         return m_sb[i];
     }
 
-    const gsMappedSingleBasis<d,T> & piece(const index_t k) const { return m_sb[k]; }
+    const gsMappedSingleBasis<d,T> & piece(const index_t k) const { return getMappedSingleBasis(k); }
     //const gsFunctionSet & piece(const index_t k) const { return m_sb[k]; }
 
     /// gives back the domain iterator of the boundary side \a s of a given \a patch
-    domainIter makeDomainIterator(const int patch,const boxSide & s) const
+    domainIter makeDomainIterator(const index_t patch,const boxSide & s) const
     { return m_bases[patch]->makeDomainIterator(s); }
 
     /** exports the patch \a i of this geometry (with coefs) to a Geometry object
@@ -211,13 +219,27 @@ public:
      *
      * \param[in] localCoef : the coefficients to the local basis functions
      */
-    gsGeometry<T>* exportPatch(const int i,gsMatrix<T> const & localCoef) const;
+    gsGeometry<T>* exportPatch(const index_t i,gsMatrix<T> const & localCoef) const;
 
     /** exports this geometry (with coefs) to a gsMultiPatch object.
      *
      * \param[in] localCoef : the coefficients to the local basis functions
      */
     gsMultiPatch<T> exportToPatches(gsMatrix<T> const & localCoef) const;
+
+private:
+    // Avoid warnings for hidden overloads w.r.t gsFunctionSet
+    void active_into(const gsMatrix<T> & u,gsMatrix<index_t>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void eval_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void deriv_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void deriv2_into(const gsMatrix<T> & u,gsMatrix<T>& result) const
+    { GISMO_NO_IMPLEMENTATION; }
+    void evalAllDers_into(const gsMatrix<T> & u, int n,
+                          std::vector<gsMatrix<T> >& result ) const
+    { GISMO_NO_IMPLEMENTATION; }
 
 public:
     //////////////////////////////////////////////////
@@ -235,7 +257,7 @@ public:
                      gsMatrix<index_t>& result) const; //global BF active on patch at point
 
     /// Returns the number of active (nonzero) basis functions at points \a u in \a result.
-    virtual void numActive_into(const unsigned patch,const gsMatrix<T> & u, gsVector<unsigned>& result) const
+    virtual void numActive_into(const index_t patch,const gsMatrix<T> & u, gsVector<index_t>& result) const
     {
         GISMO_UNUSED(patch); GISMO_UNUSED(u); GISMO_UNUSED(result);
         GISMO_NO_IMPLEMENTATION
@@ -267,25 +289,61 @@ public:
     /// \param[in,out] result gsMatrix of size <em>k</em> x <em>n</em>.
     /// See above for details.
     ///
-    void eval_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void deriv_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void deriv2_into(const unsigned patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void eval_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv2_into(const index_t patch, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+
+    gsPiecewiseFunction<T> basisFunction(index_t global_BF)
+    {
+        const size_t np = nPatches();
+        gsPiecewiseFunction<T> bf(np);
+        for( size_t i = 0; i!=np; ++i)
+            bf.addPiece( getMappedSingleBasis(i).function(global_BF) );
+        return bf;
+    }
 
     /// Evaluate the \a global_BF-th basis function on \a patch at points \a u into \a result.
-    void evalSingle_into(const unsigned patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void derivSingle_into(const unsigned patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
-    void deriv2Single_into(const unsigned patch, const int global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void evalSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void derivSingle_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+    void deriv2Single_into(const index_t patch, const index_t global_BF, const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+
+    /// Evaluate a single basis function \a i at points \a u.
+    gsMatrix<T> evalSingle(const index_t patch, const index_t global_BF, const gsMatrix<T> & u) const
+    {
+        gsMatrix<T> result;
+        this->evalSingle_into(patch, global_BF, u, result);
+        return result;
+    }
+
+    /// Evaluate a single basis function \a i derivative at points \a u.
+    gsMatrix<T> derivSingle(const index_t patch, const index_t global_BF, const gsMatrix<T> & u) const
+    {
+        gsMatrix<T> result;
+        this->derivSingle_into(patch, global_BF, u, result);
+        return result;
+    }
+
+    /// Evaluate the second derivative of a single basis function \a i at points \a u.
+    gsMatrix<T> deriv2Single(const index_t patch, const index_t global_BF, const gsMatrix<T> & u) const
+    {
+        gsMatrix<T> result;
+        this->deriv2Single_into(patch, global_BF, u, result);
+        return result;
+    }
 
     /// @brief Evaluate the nonzero basis functions of \a patch and their derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDers_into(const unsigned patch, const gsMatrix<T> & u,
-                          const int n, std::vector<gsMatrix<T> >& result ) const;
+    void evalAllDers_into(const index_t patch, const gsMatrix<T> & u,
+                          const index_t n, std::vector<gsMatrix<T> >& result ) const;
 
     /// @brief Evaluate the basis function \a global_BF at \a patch and its derivatives up
     /// to order \a n at points \a u into \a result.
-    void evalAllDersSingle_into(const unsigned patch,const unsigned global_BF, const gsMatrix<T> & u,const int n,gsMatrix<T> & result ) const;
+    void evalAllDersSingle_into(const index_t patch,const index_t global_BF, const gsMatrix<T> & u,const index_t n,gsMatrix<T> & result ) const;
 
     /// @}
+
+    /// @brief Prints the object as a string.
+    std::ostream &print(std::ostream &os) const;
 
 public:
     //////////////////////////////////////////////////
@@ -308,6 +366,16 @@ public:
     void local_coef_to_global_coef(gsMatrix<T> const & localCoefs,gsMatrix<T> & globalCoefs) const
     {  m_mapper->mapToTargetCoefs(localCoefs,globalCoefs); }
 
+    /// See gsMappedBasis::_getPatchIndex
+    index_t getPatch(index_t const localIndex)
+    {
+        return _getPatch(localIndex);
+    }
+    index_t getPatchIndex(index_t const localIndex)
+    {
+        return _getPatchIndex(localIndex);
+    }
+
 protected:
     //////////////////////////////////////////////////
     // functions for working with Indexes
@@ -318,14 +386,14 @@ protected:
      *
      * \param[in] localIndex : the accumulated index of the basis function
      */
-    unsigned _getPatch(unsigned localIndex) const;
+    index_t _getPatch(index_t const localIndex) const;
 
     /** gets the patchIndex of the basis function specified by its localIndex.
      *  This is the index of this basis function in the basis of this patch.
      *
      * \param[in] localIndex : the accumulated index of the basis function
      */
-    unsigned _getPatchIndex(const unsigned localIndex) const;
+    index_t _getPatchIndex(const index_t localIndex) const;
 
     /** gets the local index of the basis function of the patch with the
      *  given number.
@@ -333,7 +401,7 @@ protected:
      * \param[in] patch : the number of the patch
      * \param[in] patchIndex : the index of the basis function on the patch
      */
-    unsigned _getLocalIndex(unsigned const patch,unsigned const patchIndex) const
+    index_t _getLocalIndex(index_t const patch,index_t const patchIndex) const
     { return _getFirstLocalIndex(patch)+patchIndex; }
 
     /** gets the local index of the first basis function of the patch with the
@@ -341,30 +409,44 @@ protected:
      *
      * \param[in] patch : the number of the patch
      */
-    unsigned _getFirstLocalIndex(unsigned const patch) const;
+    index_t _getFirstLocalIndex(index_t const patch) const;
 
     /** gets the local index of the last basis function of the patch with the
      *  given number.
      *
      * \param[in] patch : the number of the patch
      */
-    unsigned _getLastLocalIndex(unsigned const patch) const
+    index_t _getLastLocalIndex(index_t const patch) const
     { return _getFirstLocalIndex(patch)+m_bases[patch]->size()-1; }
 
     // Data members
 protected:
-    /// topology, specifying the relation (connections) between the patches
+    /// Topology, specifying the relation (connections) between the patches
     gsBoxTopology m_topol;
 
-    /// vector of patches (bases)
+    /// Vector of local bases
     std::vector<BasisType *> m_bases;
 
-    /// map between the local basis functions and the newly created ones
+    /// Map between the local basis functions and the newly created ones
     gsWeightMapper<T> * m_mapper;
     // gsSparseMatrix<T> r:C, c:B
 
-    std::vector<gsMappedSingleBasis<d,T> > m_sb;
+    /// Underlying bases per patch
+    mutable std::vector<gsMappedSingleBasis<d,T> > m_sb;
+
+    // Make gsMultiBasis a member instead of m_bases and m_topol?
 };
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsMappedBasis
+   */
+  // void pybind11_init_gsMappedBasis1(pybind11::module &m);
+  void pybind11_init_gsMappedBasis2(pybind11::module &m);
+  // void pybind11_init_gsMappedBasis3(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 }
 

@@ -220,6 +220,17 @@ public:
     virtual T distanceL2(gsFunction<T> const &) const
     { GISMO_NO_IMPLEMENTATION }
 
+    /// Takes the physical \a points and computes the corresponding
+    /// parameter values.  If the point cannot be inverted (eg. is not
+    /// part of the geometry) the corresponding parameter values will be undefined
+    virtual void invertPoints(const gsMatrix<T> & points, gsMatrix<T> & result,
+                              const T accuracy = 1e-6,
+                              const bool useInitialPoint = false) const;
+
+    virtual void invertPointGrid(gsGridIterator<T,0> & git,
+                                 gsMatrix<T> & result, const T accuracy = 1e-6,
+                                 const bool useInitialPoint = false) const;
+
     /// Newton-Raphson method to find a solution of the equation f(\a
     /// arg) = \a value with starting vector \a arg.
     /// If the point cannot be inverted the corresponding parameter
@@ -229,11 +240,37 @@ public:
                       bool withSupport = true, 
                       const T accuracy = 1e-6,
                       int max_loop = 100,
-                      double damping_factor = 1) const;
+                      T damping_factor = 1) const;
 
     gsMatrix<T> argMin(const T accuracy = 1e-6,//index_t coord = 0
                        int max_loop = 100,
-                       double damping_factor = 1) const;
+                       gsMatrix<T> init = gsMatrix<T>(),
+                       T damping_factor = 1) const;
+
+    /// Recovers a point on the (geometry) together with its parameters
+    /// \a uv, assuming that the \a k-th coordinate of the point \a
+    /// xyz is not known (and has a random value as input argument).
+    void recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k,
+                           const T accuracy = 1e-6) const;
+
+    void recoverPointGrid(gsGridIterator<T,0> & git,
+                          gsMatrix<T> & xyz, gsMatrix<T> & uv,
+                          index_t k, const T accuracy = 1e-6) const;
+
+    /// Returns a "central" point inside inside the parameter domain
+    virtual gsMatrix<T> parameterCenter() const
+    { 
+        // default impl. assumes convex support
+        gsMatrix<T> S = this->support();
+        return ( S.col(0) + S.col(1) ) * (T)(0.5);
+    }
+
+    /// Get coordinates of the boxCorner \a bc in the parameter domain
+    gsMatrix<T> parameterCenter( const boxCorner& bc ) const;
+
+    /// Get coordinates of the midpoint of the boxSide \a bs in the parameter domain
+    gsMatrix<T> parameterCenter( const boxSide& bs ) const;
+
     
     /// Prints the object as a string.
     virtual std::ostream &print(std::ostream &os) const
@@ -259,13 +296,17 @@ public:
 
 private:
 
-    template<int mode>
+    template<int mode, int _Dim=-1>
     int newtonRaphson_impl(
         const gsVector<T> & value,
         gsVector<T> & arg, bool withSupport = true,
         const T accuracy = 1e-6, int max_loop = 100,
-        double damping_factor = 1, T scale = 1.0) const;
+        T damping_factor = 1, T scale = 1.0) const;
 
+    gsVector<T> _argMinOnGrid(index_t numpts = 20) const;
+
+    gsVector<T> _argMinNormOnGrid(index_t numpts = 20) const;
+    
 }; // class gsFunction
 
 
@@ -274,14 +315,14 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFunction<T>& b)
 {return b.print(os); }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsFunction
    */
   void pybind11_init_gsFunction(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 
 } // namespace gismo

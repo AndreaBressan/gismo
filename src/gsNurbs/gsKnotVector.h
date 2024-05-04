@@ -220,6 +220,12 @@ public: // multiplicities
     /// Returns the multiplicity of the last knot
     mult_t multLast() const { return m_multSum.back() - m_multSum.end()[-2]; }
 
+    /// Returns the maximum multiplicity in the interior
+    mult_t maxInteriorMultiplicity() const;
+
+    /// Returns the minimum multiplicity in the interior
+    mult_t minInteriorMultiplicity() const;
+
     /// Returns the multiplicity of the knot number \a i (counter with
     /// repetitions).
     mult_t multiplicityIndex( mult_t i ) const;
@@ -249,6 +255,8 @@ public: // queries
     /// Provides the knot with unique index \a i
     const T& operator()(const mult_t i) const
     {
+        GISMO_ASSERT(i+numLeftGhosts() >=0  && static_cast<size_t>(i+numLeftGhosts()) < uSize(),
+                              "Unique index "<<i<<" not in the knot vector.");
         return *( this->ubegin()+(numLeftGhosts()+i) );
     }
 
@@ -463,7 +471,7 @@ public: // Deprecated functions required by gsKnotVector.
     gsKnotVector(short_t deg, const iterType begOfKnots, const iterType endOfKnots)
     {
         insert(begOfKnots,endOfKnots);
-        m_deg = deg;
+        m_deg = (deg == - 1 ? deduceDegree() : deg);
     }
 
 public:
@@ -512,7 +520,7 @@ public:
         m_repKnots.reserve( 2*(m_deg+1) + interior*mult_interior );
         m_multSum .reserve(interior+2);
 
-        const T h = (u1-u0) / (interior+1);
+        const T h = (u1-u0) / (T)(interior+1);
 
         m_repKnots.insert(m_repKnots.begin(), m_deg+1, u0);
         m_multSum .push_back(m_deg+1);
@@ -520,7 +528,7 @@ public:
         for ( unsigned i=1; i<=interior; i++ )
         {
             m_repKnots.insert(m_repKnots.end(), mult_interior,
-                              math::pow(i*h, 1.0/grading) );
+                              math::pow(T(i)*h, 1.0/grading) );
             m_multSum .push_back( mult_interior + m_multSum.back() );
         }
         m_repKnots.insert(m_repKnots.end(), m_deg+1, u1);
@@ -529,11 +537,10 @@ public:
 
     /// Returns the greville points of the B-splines defined on this
     /// knot vector.
-    gsMatrix<T> * greville() const
+    gsMatrix<T> greville() const
     {
-        gsMatrix<T> * gr;
-        gr = new gsMatrix<T>( 1,this->size() - m_deg - 1 );
-        this->greville_into(*gr);
+        gsMatrix<T> gr( 1,this->size() - m_deg - 1 );
+        this->greville_into(gr);
         return gr;
     }
 
@@ -656,7 +663,7 @@ public:
             {
                 spanBegin =*(this->ubegin()+*it);
                 spanEnd  =*(this->ubegin()+*it+1);
-                newKnot = ( (segmentsPerSpan-k) * spanBegin + k * spanEnd ) / segmentsPerSpan;
+                newKnot = ( (segmentsPerSpan-(T)(k)) * spanBegin + (T)(k) * spanEnd ) / segmentsPerSpan;
                 newKnots.push_back( newKnot );
             }
 
@@ -665,6 +672,9 @@ public:
 
     /// Adds \a amount to all the knots.
     void addConstant( T amount );
+
+    /// Adds \a amount to all the knots, starting at knot \a start.
+    void addConstant( T start, T amount );
 
 public: // things required by gsKnotVector
 
@@ -768,6 +778,9 @@ public: // things required by gsKnotVector
         remove( ubegin()  , i );
         remove( uend() - 1, i );
         m_deg -= i;
+        for (uiterator itr = ubegin()+1; itr != uend()-1; ++itr)
+            if ( itr.multiplicity() > m_deg )
+                remove( itr, itr.multiplicity() - m_deg );
     }
 
     /// Increase the multiplicity of all the knots by \a i. If \a
@@ -853,7 +866,7 @@ public: // Deprecated functions required by gsCompactKnotVector.
     {
         const T df = *(ubegin() + 1) - *ubegin();
         for( uiterator uit = ubegin() + 1; uit != uend(); ++uit )
-            if( math::abs(*uit - (*uit-1) - df) > tol )
+            if( math::abs(*uit - (*uit-(T)(1)) - df) > tol )
                 return false;
         return true;
     }
@@ -928,14 +941,14 @@ std::ostream& operator << (std::ostream& out, const gsKnotVector<T> KV )
 }
 
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsKnotVector
    */
   void pybind11_init_gsKnotVector(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

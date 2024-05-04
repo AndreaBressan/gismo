@@ -50,6 +50,12 @@ gsMatrix<T> gsFunctionSet<T>::support() const
     return gsMatrix<T>();
 }
 
+template <class T>
+gsMatrix<T> gsFunctionSet<T>::support(const index_t & i) const
+{
+    GISMO_NO_IMPLEMENTATION
+}
+
 // actives
 
 template <typename T>
@@ -101,6 +107,15 @@ void gsFunctionSet<T>::evalAllDers_into(const gsMatrix<T> & u, const int n,
         GISMO_ERROR("evalAllDers implemented for order up to 2<"<<n ); //<< " for "<<*this);
         break;
     }
+}
+
+template <class T>
+std::vector<gsMatrix<T> >
+gsFunctionSet<T>::evalAllDers(const gsMatrix<T>& u, int n) const
+{
+    std::vector<gsMatrix<T> > result;
+    this->evalAllDers_into( u, n, result );
+    return result;
 }
 
 template <class T>

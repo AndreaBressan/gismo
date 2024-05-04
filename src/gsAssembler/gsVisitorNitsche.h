@@ -92,7 +92,7 @@ public:
         if (m_penalty<0)
         {
             const index_t deg = basis.maxDegree();
-            m_penalty = T(2.5) * (deg + basis.dim()) * (deg + 1);
+            m_penalty = (T)(2.5) * (T)(deg + basis.dim()) * (T)(deg + 1);
         }
 
         m_alpha     = options.askReal("Nitsche.Alpha", 1);
@@ -226,7 +226,7 @@ private:
     const gsPde<T> * m_pde;
 
     /// Dirichlet function
-    const gsFunction<T> * m_dirdata_ptr;
+    const gsFunctionSet<T> * m_dirdata_ptr;
 
     /// Parameter \f$\alpha\f$ for the linear form
     T m_alpha;

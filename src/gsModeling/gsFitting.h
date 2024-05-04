@@ -16,7 +16,10 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <vector>
+
 #include <gsCore/gsMath.h>
+#include <gsMSplines/gsMappedBasis.h>
+#include <gsMSplines/gsMappedSpline.h>
 
 namespace gismo
 {
@@ -43,6 +46,12 @@ public:
               gsMatrix<T> const & points, 
               gsBasis<T>  & basis);
 
+        /// constructor
+    gsFitting(gsMatrix<T> const & param_values, 
+              gsMatrix<T> const & points,
+              gsVector<index_t>  offset,
+              gsMappedBasis<2,T>  & mbasis) ;
+
     /// Destructor
     virtual ~gsFitting();
 
@@ -50,6 +59,10 @@ public:
 
     /// Computes the least squares fit for a gsBasis
     void compute(T lambda = 0);
+
+    void parameterCorrection(T accuracy = 1e-8,
+                             index_t maxIter = 10,
+                             T tolOrth = 1e-6);
 
     /// Computes the euclidean error for each point
     void computeErrors();
@@ -90,7 +103,7 @@ public:
     /// Adds to the matrix A_mat terms for minimization of second derivative, weighted
     /// with parameter lambda.
     void applySmoothing(T lambda, gsSparseMatrix<T> & A_mat);
-    
+    gsSparseMatrix<T> smoothingMatrix(T lambda) const;
     /// Assembles system for the least square fit.
     void assembleSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& B);
 
@@ -100,8 +113,11 @@ public:
     /// gives back the computed approximation
     gsGeometry<T> * result() const { return m_result; }
 
+    /// gives back the computed approximation for multipatch geometry
+    const gsMappedSpline<2,T> & mresult() const { return m_mresult; }
+
     /// Returns the basis of the approximation
-    const gsBasis<T> & getBasis() const {return *m_basis;}
+    const gsBasis<T> & getBasis() const {return *static_cast<const gsBasis<T>*>(m_basis);}
 
     void setBasis(gsBasis<T> & basis) {m_basis=&basis;}
 
@@ -156,11 +172,25 @@ public:
 	return m_solutionTime;
     }
 
+    /// Sets constraints in such a way that the previous values at \a
+    /// fixedSides of the geometry remain intact.
+    void setConstraints(const std::vector<boxSide>& fixedSides);
+
+    /// Set constraints in such a way that the resulting geometry on
+    /// each of \a fixedSides will coincide with the corresponding
+    /// curve in \a fixedCurves.
+    void setConstraints(const std::vector<boxSide>& fixedSides,
+            const std::vector<gsBSpline<T> >& fixedCurves);
+    void setConstraints(const std::vector<boxSide>& fixedSides,
+            const std::vector<gsGeometry<T> * >& fixedCurves);
+
 private:
     /// Extends the system of equations by taking constraints into account.
     void extendSystem(gsSparseMatrix<T>& A_mat, gsMatrix<T>& m_B);
 
 protected:
+
+    //gsOptionList
 
     /// the parameter values of the point cloud
     gsMatrix<T> m_param_values;
@@ -171,14 +201,22 @@ protected:
     /// fitting weights
     gsVector<T> m_weights;
 
+    // Patch offsets
+    gsVector<index_t> m_offset;
+
     /// Pointer keeping the basis
-    gsBasis<T> * m_basis;
+    gsFunctionSet<T> * m_basis;
 
     /// Pointer keeping the resulting geometry
     gsGeometry<T> * m_result;
 
+    /// Pointer keeping the resulting multipatch geometry
+    gsMappedSpline<2,T>  m_mresult;
+
     // All point-wise errors
     std::vector<T> m_pointErrors;
+
+    mutable T m_last_lambda;
 
     /// Maximum point-wise error
     T m_max_error;
@@ -204,6 +242,16 @@ private:
     //void applySmoothing(T lambda, gsMatrix<T> & A_mat);
 
 }; // class gsFitting
+
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsKnotVector
+   */
+  void pybind11_init_gsFitting(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 
 }// namespace gismo

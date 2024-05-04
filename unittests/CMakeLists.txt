@@ -17,7 +17,7 @@ gismo_fetch_module(gsUnitTest
 include(gsConfig)
 
 # set include directory
-set(GSUNITTEST_INCLUDE_DIR ${gismo_SOURCE_DIR}/extensions/gsUnitTest
+set(GSUNITTEST_INCLUDE_DIR ${gismo_SOURCE_DIR}/optional/gsUnitTest
   CACHE INTERNAL "gsUnitTest include directory")
 
 install(DIRECTORY ${GSUNITTEST_INCLUDE_DIR} DESTINATION
@@ -33,11 +33,12 @@ install(DIRECTORY ${GSUNITTEST_INCLUDE_DIR} DESTINATION
 #  #install(TARGETS ho_lib EXPORT the_export_set DESTINATION ${some_dest})
 
 include_directories(${GSUNITTEST_INCLUDE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Collect source file names
 aux_gs_cpp_directory(${PROJECT_SOURCE_DIR} unittests_SRCS)
 
-add_executable(${PROJECT_NAME} gismo_unittest.h ${unittests_SRCS} main.cpp)
+add_executable(${PROJECT_NAME} gismo_unittest.h ${unittests_SRCS} ${gismo_UNITTESTS} main.cpp)
 target_link_libraries(${PROJECT_NAME} gismo UnitTestPP)
 set_target_properties(${PROJECT_NAME} PROPERTIES LABELS "${PROJECT_NAME}" FOLDER "${PROJECT_NAME}")
 
@@ -46,6 +47,12 @@ if (NOT NOSNIPPETS)
 endif()
 
 foreach(file ${unittests_SRCS})
+  get_filename_component(testname ${file} NAME_WE) # name without extension
+  add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${testname})
+  set_property(TEST unit_${testname} PROPERTY LABELS unittests)
+endforeach(file ${FILES})
+
+foreach(file ${gismo_UNITTESTS})
   get_filename_component(testname ${file} NAME_WE) # name without extension
   add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${testname})
   set_property(TEST unit_${testname} PROPERTY LABELS unittests)

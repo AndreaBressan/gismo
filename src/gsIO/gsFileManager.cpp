@@ -40,6 +40,10 @@
 #include <limits.h>
 #endif
 
+#if defined __FreeBSD__
+#include <sys/syslimits.h>
+#endif
+
 namespace gismo
 {
 
@@ -186,6 +190,7 @@ bool gsFileManager::isExplicitlyRelative(const std::string& fn)
 
 namespace {
 
+#if defined _WIN32
 inline void _replace_with_native_separator(std::string & str)
 {
     for (size_t i = 1; i < gsFileManager::getValidPathSeparators().length(); ++i)
@@ -195,6 +200,7 @@ inline void _replace_with_native_separator(std::string & str)
             gsFileManager::getNativePathSeparator());
     }
 }
+#endif
 
 inline bool _addSearchPaths(const std::string& in, std::vector<std::string>& out)
 {
@@ -465,9 +471,9 @@ std::string gsFileManager::getHomePath()
 	char _temp[MAX_PATH];
 	if (SHGetKnownFolderPath(FOLDERID_Profile, KF_FLAG_DEFAULT, NULL, wbuffer) == S_OK)
 	{
-		wcsrtombs_s(NULL, _temp,
-			const_cast<const wchar_t**>(reinterpret_cast<wchar_t**>(wbuffer)),
-			MAX_PATH, NULL);
+		wcsrtombs_s(NULL, _temp, MAX_PATH,
+                    const_cast<const wchar_t**>(reinterpret_cast<wchar_t**>(wbuffer)),
+                    MAX_PATH, NULL);
 	}
 #else
     char* _temp = getenv("HOME");
@@ -564,7 +570,7 @@ std::string gsFileManager::getExtension(std::string const & fn)
     if(fn.find_last_of(".") != std::string::npos)
     {
         std::string ext = fn.substr(fn.rfind(".")+1);
-        std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+        std::for_each(ext.begin(), ext.end(), [](char& a){ a = static_cast<char>(::tolower(a));} );
         return ext;
     }
     return "";
@@ -572,14 +578,20 @@ std::string gsFileManager::getExtension(std::string const & fn)
 
 std::string gsFileManager::getBasename(std::string const & fn)
 {
-    if(fn.find_last_of(".") != std::string::npos)
+
+    std::string name = fn;
+    if(fn.find_last_of(".") != std::string::npos) // If filename has an extension
     {
         size_t pos1 = fn.find_last_of(getValidPathSeparators());
         size_t pos2 = fn.rfind(".");
-        std::string name = fn.substr(pos1+1, pos2-pos1-1);
-        return name;
+        name = fn.substr(pos1+1, pos2-pos1-1);
     }
-    return fn;
+    else if (fn.find_last_of(getValidPathSeparators()) != std::string::npos) // If filename contains at lest one separator
+    {
+        size_t pos1 = fn.find_last_of(getValidPathSeparators());
+        name = fn.substr(pos1+1);
+    }
+    return name;
 }
 
 std::string gsFileManager::getFilename(std::string const & fn)

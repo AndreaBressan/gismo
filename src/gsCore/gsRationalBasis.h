@@ -139,7 +139,11 @@ public:
     int size(int const& k) const{ return m_src->size(k); }
 
     size_t numElements() const { return m_src->numElements(); }
-    using Base::numElements; //unhide
+    size_t numElements(boxSide const & s) const { return m_src->numElements(s); }
+    //using Base::numElements; //unhide
+
+    /// See \ref gsBasis for a description
+    size_t elementIndex(const gsVector<T> & u ) const { return m_src->elementIndex(u); }
 
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
     { m_src->active_into(u, result); }
@@ -167,12 +171,12 @@ public:
     // Look at gsBasis class for a description
     short_t totalDegree() const     {return m_src->totalDegree(); }
 
-    void uniformRefine(int numKnots = 1, int mul=1)
+    void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
     {
-        m_src->uniformRefine_withCoefs(m_weights, numKnots, mul);
+        m_src->uniformRefine_withCoefs(m_weights, numKnots, mul, dir);
     }
 
-    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1);
+    void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1,  int mul=1, int dir=-1);
 
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul=1);
 
@@ -208,10 +212,27 @@ public:
         std::swap(*m_src, tmp.basis() );
     }
 
+    // todo (HV): test!!
+    void degreeIncrease(short_t const& i = 1, short_t const dir = -1)
+    {
+        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
+        tmp.degreeIncrease(i,dir);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
+    }
+
     void degreeReduce(short_t const& i = 1, short_t const dir = -1)
     {
         typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
         tmp.degreeReduce(i,dir);
+        tmp.coefs().swap(m_weights);
+        std::swap(*m_src, tmp.basis() );
+    }
+
+    void degreeDecrease(short_t const& i = 1, short_t const dir = -1)
+    {
+        typename SourceBasis::GeometryType tmp(*m_src, give(m_weights));
+        tmp.degreeDecrease(i,dir);
         tmp.coefs().swap(m_weights);
         std::swap(*m_src, tmp.basis() );
     }
@@ -271,6 +292,10 @@ public:
 
     /// Returns the weights of the rational basis
     gsMatrix<T> & weights()  { return m_weights; }
+    
+
+    /// Returns true, since by definition a gsRationalBasis is rational.
+    virtual bool isRational() const { return true;}
 
     /// Access to i-th weight
     T & weight(int i)             { return m_weights(i); }
@@ -545,8 +570,8 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
 
             result.template block<Dim,1>(kstr,i) +=
                 // - 2 N_k' W' + 2 N_k (W')^2 / W
-                ( 2 * ev[0](k,i) / W ) * dW.cwiseProduct(dW)
-                - 2 * ev[1].template block<Dim,1>(kd,i).cwiseProduct(dW);
+                ( (T)(2) * ev[0](k,i) / W ) * dW.cwiseProduct(dW)
+                - (T)(2) * ev[1].template block<Dim,1>(kd,i).cwiseProduct(dW);
 
             int m = Dim;
             for ( int _u=0; _u != Dim; ++_u ) // for all mixed derivatives
@@ -555,8 +580,8 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
                     result(kstr + m++, i) +=
                         - ev[1](kd+_u,i) * dW.at(_v) // - du N_k * dv W
                         - ev[1](kd+_v,i) * dW.at(_u) // - dv N_k * du W
-                        // + 2 * N_k * du W * dv W / W
-                        + 2 * ev[0](k,i) * dW.at(_u) * dW.at(_v) / W;
+                        // + (T)(2) * N_k * du W * dv W / W
+                        + (T)(2) * ev[0](k,i) * dW.at(_u) * dW.at(_v) / W;
                 }
 
             result.template block<str,1>(kstr,i) *=
@@ -567,7 +592,7 @@ void gsRationalBasis<SrcT>::deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& resu
 
 
 template<class SrcT>
-void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul)
+void gsRationalBasis<SrcT>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots,  int mul, int dir)
 {
     GISMO_ASSERT( coefs.rows() == this->size() && m_weights.rows() == this->size(),
                   "Invalid dimensions" );

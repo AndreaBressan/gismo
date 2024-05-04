@@ -54,6 +54,7 @@ namespace internal
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
+#include <gsCore/gsGeometryTransform.h>
 #include <gsCore/gsCurve.h>
 #include <gsCore/gsSurface.h>
 #include <gsCore/gsVolume.h>
@@ -76,6 +77,8 @@ namespace internal
 
 #include <gsCore/gsDomainIterator.h>
 
+#include <gsCore/gsSysInfo.h>
+
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
 // Tensors
@@ -95,6 +98,7 @@ namespace internal
 #include <gsNurbs/gsTensorNurbsBasis.h>
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbsCreator.h>
+#include <gsNurbs/gsCurveCurveIntersection.h>
 
 /* ----------- HSplines ----------- */
 #include <gsHSplines/gsHBSplineBasis.h>
@@ -102,6 +106,11 @@ namespace internal
 #include <gsHSplines/gsTHBSplineBasis.h>
 #include <gsHSplines/gsTHBSpline.h>
 #include <gsHSplines/gsHFitting.h>
+#include <gsHSplines/gsHBox.h>
+#include <gsHSplines/gsHBoxContainer.h>
+
+/* ----------- Mesh ----------- */
+#include <gsMesh2/gsSurfMesh.h>
 
 /* ----------- MSplines ----------- */
 #include <gsMSplines/gsMappedBasis.h>
@@ -122,6 +131,7 @@ namespace internal
 #include <gsModeling/gsSpringPatch.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsModeling/gsCrossApPatch.h>
+#include <gsModeling/gsBarrierPatch.h>
 
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>
@@ -150,12 +160,16 @@ namespace internal
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGenericAssembler.h>
 #include <gsAssembler/gsPoissonAssembler.h>
+#include <gsAssembler/gsBiharmonicExprAssembler.h>
 #include <gsAssembler/gsCDRAssembler.h>
 #include <gsAssembler/gsHeatEquation.h>
 
 #include <gsAssembler/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
+
+#include <gsAssembler/gsAdaptiveMeshing.h>
+#include <gsAssembler/gsAdaptiveMeshingUtils.h>
 
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
@@ -174,6 +188,7 @@ namespace internal
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsPatchPreconditionersCreator.h>
 #include <gsSolver/gsLanczosMatrix.h>
+#include <gsSolver/gsMinResQLP.h>
 
 /* ----------- Ieti ----------- */
 #include <gsIeti/gsIetiMapper.h>
@@ -188,25 +203,27 @@ namespace internal
 #include <gsIO/gsFileManager.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsParaviewCollection.h>
+#include <gsIO/gsParaviewDataSet.h>
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
 
-/* ----------- MPI ----------- */
-#include <gsMpi/gsMpi.h>
+/* ----------- Parallel ----------- */
+#include <gsParallel/gsMpi.h>
 
 /* ----------- Utilities ----------- */
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 #include <gsUtils/gsQuasiInterpolate.h>
+#include <gsUtils/gsL2Projection.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
 #include <gsAutoDiff.h>
 #endif
 
-#ifdef GISMO_WITH_TRILINOS
+#ifdef gsTrilinos_ENABLED
 #include <gsTrilinos/gsTrilinos.h>
 #endif
 

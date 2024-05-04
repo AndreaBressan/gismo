@@ -12,8 +12,6 @@
 
 */
 
-#include <gismo.h>
-
 namespace gismo
 {
 
@@ -61,7 +59,7 @@ void gsPeriodicOverlap<T>::constructTwinsBetween(size_t& currentNrAllVertices,
 
     // Push the corresponding pairs to the twin vector.
     // Note that if we would do std::prev on begin(), we should not dereference.
-    // The error is visible only with -DGISMO_EXTRA_DEBUG=ON.
+    // The error is visible only with -DGISMO_WITH_XDEBUG=ON.
     for(std::list<size_t>::const_iterator it=vertexIndices.begin();
         it == vertexIndices.begin() || *std::prev(it) != to;
         ++it)
@@ -120,13 +118,13 @@ void gsPeriodicOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &
         updateLambdasWithTwins(lambdas, i+1);
 
         for (size_t j = 0; j < N + numTwins; j++)
-            LHS(i, j) = ( i==j ? T(1) : -lambdas[j] );
+            LHS(i, j) = ( i==j ? (T)(1) : -lambdas[j] );
     }
 
     // points on the lower and upper boundary
     for (size_t i=n; i<N; i++)
     {
-        LHS(i, i)  = T(1);
+        LHS(i, i)  = (T)(1);
         RHS.row(i) = this->m_parameterPoints[i];
     }
 
@@ -136,14 +134,14 @@ void gsPeriodicOverlap<T>::constructAndSolveEquationSystem(const Neighbourhood &
         size_t first   = m_twins[i-N].first-1;
         size_t second  = m_twins[i-N].second-1;
 
-        LHS(i, first)  = T( 1);
-        LHS(i, second) = T(-1);
+        LHS(i, first)  = (T)( 1);
+        LHS(i, second) = (T)(-1);
 
-        RHS(i, 0)      = T(-1);
-        RHS(i, 1)      = T( 0);
+        RHS(i, 0)      = (T)(-1);
+        RHS(i, 1)      = (T)( 0);
     }
 
-    Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
+    gsEigen::PartialPivLU<typename gsMatrix<T>::Base> LU = LHS.partialPivLu();
     gsMatrix<T> sol = LU.solve(RHS);
     for (size_t i = 0; i < N; i++)
     {
@@ -251,13 +249,13 @@ gsMesh<T> gsPeriodicOverlap<T>::createExtendedFlatMesh(const std::vector<size_t>
                 const Point2D vertex = gsParametrization<T>::getParameterPoint(vInd[j]);
                 if(std::find(rVert.begin(), rVert.end(), j) != rVert.end())
                 {
-                    mvLft[j] = midMesh.addVertex(vertex[0],   vertex[1]);
-                    mvRgt[j] = midMesh.addVertex(vertex[0]+1, vertex[1]);
+                    mvLft[j] = midMesh.addVertex(vertex[0],        vertex[1]);
+                    mvRgt[j] = midMesh.addVertex(vertex[0]+(T)(1), vertex[1]);
                 }
                 else
                 {
-                    mvLft[j] = midMesh.addVertex(vertex[0]-1, vertex[1]);
-                    mvRgt[j] = midMesh.addVertex(vertex[0],   vertex[1]);
+                    mvLft[j] = midMesh.addVertex(vertex[0]-(T)(1), vertex[1]);
+                    mvRgt[j] = midMesh.addVertex(vertex[0],        vertex[1]);
                 }
             }
             midMesh.addFace(mvLft[0], mvLft[1], mvLft[2]);

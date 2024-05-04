@@ -5,9 +5,9 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-include(CheckCXXCompilerFlag)
-
 #find_package(Metis REQUIRED)
+
+include(CheckCXXCompilerFlag)
 
 #Remove NDEBUG from RelWithDebInfo builds
 string(REPLACE "-DNDEBUG" "" replacementFlags "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
@@ -26,10 +26,6 @@ endif()
 if(NOT GISMO_COEFF_TYPE)
   set (GISMO_COEFF_TYPE "double" CACHE STRING
    "Coefficient type(float, double, long double, mpfr::mpreal, mpq_class, posit_2_0, posit_3_0, posit_3_1, posit_4_0, posit_8_0, posit_8_1, posit_16_1, posit_32_2, posit_64_3, posit_128_4, posit_256_5)" FORCE)
-elseif(${GISMO_COEFF_TYPE} STREQUAL "mpfr::mpreal")
-  set(GISMO_WITH_MPFR ON CACHE BOOL "Use MPFR" FORCE)
-elseif(${GISMO_COEFF_TYPE} STREQUAL "mpq_class")
-  set(GISMO_WITH_GMP ON CACHE BOOL "Use GMP" FORCE)
 elseif(${GISMO_COEFF_TYPE} STREQUAL "posit_2_0"   OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_3_0"   OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_3_1"   OR
@@ -41,7 +37,8 @@ elseif(${GISMO_COEFF_TYPE} STREQUAL "posit_2_0"   OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_64_3"  OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_128_4" OR
        ${GISMO_COEFF_TYPE} STREQUAL "posit_256_5")
-  set(GISMO_WITH_UNUM ON CACHE BOOL "Use UNUM" FORCE)
+  set(GISMO_OPTIONAL ${GISMO_OPTIONAL} "gsUniversal"
+    CACHE INTERNAL "List of optional G+Smo modules" FORCE)
 endif()
 set_property(CACHE GISMO_COEFF_TYPE PROPERTY STRINGS
 "float" "double" "long double" "mpfr::mpreal" "mpq_class" "posit_2_0" "posit_3_0" "posit_3_1" "posit_4_0" "posit_8_0" "posit_8_1" "posit_16_1" "posit_32_2" "posit_64_3" "posit_128_4" "posit_256_5")
@@ -50,9 +47,18 @@ if(NOT GISMO_INDEX_TYPE)
    set (GISMO_INDEX_TYPE "int" CACHE STRING
    #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
    #set (GISMO_INDEX_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
-   "Index type(int, int32_t, int64_t, long, long long)" FORCE)
+   "Index type(int, int8_t, int16_t, int32_t, int64_t, long, long long)" FORCE)
    set_property(CACHE GISMO_INDEX_TYPE PROPERTY STRINGS
-   "int" "int32_t" "int64_t" "long" "long long" )
+   "int" "int8_t" "int16_t" "int32_t" "int64_t" "long" "long long" )
+endif()
+
+if(NOT GISMO_SHORT_TYPE)
+   set (GISMO_SHORT_TYPE "int" CACHE STRING
+   #math(EXPR BITSZ_VOID_P "8*${CMAKE_SIZEOF_VOID_P}")
+   #set (GISMO_SHORT_TYPE "int${BITSZ_VOID_P}_t" CACHE STRING
+   "Index type(int, int8_t, int16_t, int32_t, int64_t, long, long long)" FORCE)
+   set_property(CACHE GISMO_SHORT_TYPE PROPERTY STRINGS
+   "int" "int8_t" "int16_t" "int32_t" "int64_t" "long" "long long" )
 endif()
 
 # Set a default build type if none was specified
@@ -138,9 +144,9 @@ if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
 
 endif()
 
-if(GISMO_EXTRA_DEBUG)
+if(GISMO_WITH_XDEBUG)
   include(gsDebugExtra)
-endif(GISMO_EXTRA_DEBUG)
+endif(GISMO_WITH_XDEBUG)
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   # Force to always compile with W4
@@ -165,7 +171,7 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-compat")
   endif()
 
-  if(GISMO_WARNINGS)
+  if(GISMO_WITH_WARNINGS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Woverloaded-virtual -Wextra")
     #-Wshadow -Wconversion -pedantic -Wunused -Wattributes
   endif()
@@ -201,22 +207,21 @@ elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Dar
     endif()
 endif()
 
-if (GISMO_BUILD_PYBIND11)
+if (GISMO_WITH_PYBIND11)
    find_package(pybind11 REQUIRED)
    include_directories(${pybind11_INCLUDE_DIR})
   
    #find_package(PythonLibs REQUIRED)# deprecated since cmake 3.12
    #PYTHON_LIBRARY
    #PYTHON_INCLUDE_DIR
-
    # New and better way:
-   find_package(Python REQUIRED COMPONENTS Development) #Python2 Python3
+   #find_package(Python REQUIRED COMPONENTS Development) #Python2 Python3
    #Python_INCLUDE_DIRS
    #Python_LIBRARIES
 
    #find_package(PythonLibsNew ${PYBIND11_PYTHON_VERSION} MODULE REQUIRED) #pybind11
 
-   include_directories(${Python_INCLUDE_DIRS})
+   include_directories(${PYTHON_INCLUDE_DIRS})
 endif()
 
 if (GISMO_WITH_OPENMP)
@@ -226,11 +231,11 @@ if (GISMO_WITH_OPENMP)
    if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
        "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xAppleClang" OR "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang" AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       find_path(OpenMP_C_INCLUDE_DIR
-        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES include)
       find_path(OpenMP_CXX_INCLUDE_DIR
-        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES include)
+        NAMES "omp.h" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES include)
       find_library(OpenMP_libomp_LIBRARY
-        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew PATH_SUFFICES lib)
+        NAMES "omp" PATHS /usr/local /opt /opt/local /opt/homebrew/opt/libomp PATH_SUFFIXES lib)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xclang -fopenmp -I${OpenMP_C_INCLUDE_DIR}")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xclang -fopenmp -I${OpenMP_CXX_INCLUDE_DIR}")
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_libomp_LIBRARY}")
@@ -267,12 +272,10 @@ endif()
 #string(TOUPPER ${CMAKE_BUILD_TYPE} TEMP)
 #message(STATUS "Using compilation flags: ${CMAKE_CXX_FLAGS}, ${CMAKE_CXX_FLAGS_${TEMP}}")
 
-if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
-  #https://github.com/VcDevel/Vc/blob/master/cmake/OptimizeForArchitecture.cmake
+if("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease" AND NOT ARCHITECTURE_CXX_FLAGS)
   include( OptimizeForArchitecture )
   OptimizeForArchitecture()
-  foreach (flag ${OFA_ARCHITECTURE_FLAGS})
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${flag}")
+  foreach (flag ${ARCHITECTURE_CXX_FLAGS})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag}")
   endforeach()
-endif("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease")
+endif("x${CMAKE_BUILD_TYPE}" STREQUAL "xRelease" AND NOT ARCHITECTURE_CXX_FLAGS)

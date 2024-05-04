@@ -30,6 +30,7 @@ class gsAffineFunction : public gsFunction<T>
 {
 protected:
     gsMatrix<T> m_mat;
+    gsMatrix<T> m_box1, m_box2;
     gsVector<T> m_trans;
 public:
     /// Shared pointer for gsAffineFunction
@@ -85,6 +86,9 @@ public:
     static uPtr make(const gsVector<index_t> &directions, const gsVector<bool> &orientation, const gsMatrix<T> &box1, const gsMatrix<T> &box2)
     { return uPtr(new gsAffineFunction(directions, orientation, box1, box2)); }
 
+    const gsMatrix<T> & matrix() const { return m_mat; }
+    const gsVector<T> & translation() const { return m_trans; }
+    
     virtual short_t domainDim() const;
     virtual short_t targetDim() const;
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;

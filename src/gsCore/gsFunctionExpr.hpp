@@ -66,21 +66,20 @@
 #include <exprtk_ad_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_MPFR)
+#if defined(gsMpfr_ENABLED)
 #include <exprtk_mpfr_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_GMP)
+#if defined(gsGmp_ENABLED)
 #include <exprtk_gmp_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_CODIPACK)
-#include <gsCoDiPack/exprtk_codi_rf_forward.hpp>
-#include <gsCoDiPack/exprtk_codi_rr_forward.hpp>
+#if defined(gsCoDiPack_ENABLED)
+#include <gsCoDiPack/exprtk_codi_forward.hpp>
 #endif
 
-#if defined(GISMO_WITH_UNUM)
-#include <gsUnum/exprtk_unum_posit_forward.hpp>
+#if defined(gsUniversal_ENABLED)
+#include <gsUniversal/exprtk_universal_forward.hpp>
 #endif
 
 #include <exprtk.hpp>
@@ -89,21 +88,20 @@
 #include <exprtk_ad_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_MPFR)
+#if defined(gsMpfr_ENABLED)
 #include <exprtk_mpfr_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_GMP)
+#if defined(gsGmp_ENABLED)
 #include <exprtk_gmp_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_CODIPACK)
-#include <gsCoDiPack/exprtk_codi_rf_adaptor.hpp>
-#include <gsCoDiPack/exprtk_codi_rr_adaptor.hpp>
+#if defined(gsCoDiPack_ENABLED)
+#include <gsCoDiPack/exprtk_codi_adaptor.hpp>
 #endif
 
-#if defined(GISMO_WITH_UNUM)
-#include <gsUnum/exprtk_unum_posit_adaptor.hpp>
+#if defined(gsUniversal_ENABLED)
+#include <gsUniversal/exprtk_universal_adaptor.hpp>
 #endif
 
 
@@ -119,18 +117,18 @@ T mixed_derivative(const exprtk::expression<T>& e,
                      T& x, T& y,
                      const double& h = 0.00001)
 {
-    T num = T(0.0), tmp;
+    T num = (T)(0.0), tmp;
     T x_init = x;
     T y_init = y;
 
-    x = x_init + T(2.0) * h;
-    y = y_init + T(2.0) * h;
+    x = x_init + (T)(2.0) * h;
+    y = y_init + (T)(2.0) * h;
     num += e.value();
-    y = y_init - T(2.0) * h;
+    y = y_init - (T)(2.0) * h;
     num -= e.value();
-    x = x_init - T(2.0) * h;
+    x = x_init - (T)(2.0) * h;
     num += e.value();
-    y = y_init + T(2.0) * h;
+    y = y_init + (T)(2.0) * h;
     num -= e.value();
 
     x = x_init + h;
@@ -142,32 +140,32 @@ T mixed_derivative(const exprtk::expression<T>& e,
     tmp += e.value();
     y = y_init + h;
     tmp -= e.value();
-    num += 64* tmp;
+    num += (T)(64.0) * tmp;
 
-    x = x_init + T(2.0) * h;
+    x = x_init + (T)(2.0) * h;
     y = y_init - h;
     tmp = e.value();
     y = y_init + h;
     tmp -= e.value();
-    x = x_init - T(2.0) * h;
+    x = x_init - (T)(2.0) * h;
     tmp += e.value();
     y = y_init - h;
     tmp -= e.value();
 
-    y = y_init + T(2.0) * h;
+    y = y_init + (T)(2.0) * h;
     x = x_init - h;
     tmp += e.value();
     x = x_init + h;
     tmp -= e.value();
-    y = y_init - T(2.0) * h;
+    y = y_init - (T)(2.0) * h;
     tmp += e.value();
     x = x_init - h;
     tmp -= e.value();
-    num += 8* tmp;
+    num += (T)(8.0) * tmp;
 
     x = x_init;
     y = y_init;
-    return num / ( T(144.0)*h*h );
+    return num / ( (T)(144.0)*h*h );
 }
 
 } //namespace
@@ -774,14 +772,30 @@ public:
 
     static void get_into (gsXmlNode * node, Object & obj)
     {
-        getFunctionFromXml(node, obj);
+        GISMO_ASSERT( node->first_attribute("dim"), "Reading gsFunctionExpr XML: No dim found" ) ;
+        const int d = atoi( node->first_attribute("dim")->value() );
+
+        std::vector< std::string > expr_strings;
+
+        gsXmlNode * child = node->first_node("c");
+
+        if (child != NULL )
+        {
+            for (; child; child = child->next_sibling() )
+                expr_strings.push_back(  child->value() );
+        }
+        else
+            expr_strings.push_back(  node->value() );
+
+        obj = gsFunctionExpr<T>( expr_strings, d );
     }
 
     static gsXmlNode * put (const Object & obj,
                             gsXmlTree & data )
     {
-        gsXmlNode * func = makeNode("FunctionExpr", data);
+        gsXmlNode * func = makeNode("Function", data);
         func->append_attribute(makeAttribute("dim", obj.domainDim(), data));
+        func->append_attribute(makeAttribute("type", "FunctionExpr", data));
 
         const short_t tdim = obj.targetDim();
 

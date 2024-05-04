@@ -130,6 +130,13 @@
         __DEC0(type, clone, void) { return new type(*this); } \
         __DEF0(type, clone, void)
 
+// Declaration, definition and implementation of clone function which overrides
+// 1st: return type
+#define GISMO_OVERRIDE_CLONE_FUNCTION(type) \
+        __DEC0(type, clone, void) override { return new type(*this); } \
+        __DEF0(type, clone, void)
+
+
 namespace gismo {
 
 /**
@@ -211,6 +218,7 @@ template <typename T>
 class gsFunctionSet
 {
 public:
+
     /// Shared pointer for gsFunctionSet
     typedef memory::shared_ptr< gsFunctionSet > Ptr;
 
@@ -254,6 +262,7 @@ public:
      of definition is the whole of \f$R^{domainDim}\f$
     */
     virtual gsMatrix<T> support() const;
+    virtual gsMatrix<T> support(const index_t & i) const;
 
     /**
       @brief Indices of active (non-zero) function(s) for each point.
@@ -401,6 +410,9 @@ public:
     /// to order \a n. If n is -1 then no computation is performed.
     virtual void evalAllDers_into(const gsMatrix<T> & u, int n,
                                   std::vector<gsMatrix<T> > & result) const;
+
+    /// Evaluate all derivatives upto order \a n, \see evalAllDers_into
+    std::vector<gsMatrix<T> > evalAllDers(const gsMatrix<T> & u, int n) const;
 
     /// Evaluate the function, \see eval_into()
     gsMatrix<T> eval(const gsMatrix<T>& u) const;
@@ -572,14 +584,14 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsFunctionSet<T>& b)
 {return b.print(os); }
 
-#ifdef GISMO_BUILD_PYBIND11
+#ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsFunction
    */
   void pybind11_init_gsFunctionSet(pybind11::module &m);
 
-#endif // GISMO_BUILD_PYBIND11
+#endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
 

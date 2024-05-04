@@ -27,6 +27,7 @@
 ##   -D CTEST_CONFIGURATION_TYPE=Release -D CTEST_BUILD_JOBS=8 \
 ##   -D CTEST_CMAKE_GENERATOR="Unix Makefiles" -D CNAME=gcc -D CXXNAME=g++ \
 ##   -D CTEST_TEST_TIMEOUT=100 -D CTEST_MEMORYCHECK_TYPE=Valgrind \
+##   -D GISMO_OPTIONAL="gsOpennurbs\\;gsSpectra"
 ##   -D DO_COVERAGE=TRUE
 ##
 ## Different dashboard projects and subprojects are possible:
@@ -67,6 +68,7 @@
 ##   CTEST_TEST_MODEL
 ##   CTEST_TEST_TIMEOUT
 ##   CXXNAME
+##   GISMO_OPTIONAL    --> pass to ctest as, eg: -D GISMO_OPTIONAL="gsOpennurbs\\;gsSpectra"
 ##   DO_COVERAGE
 ##   DO_TESTS
 ##   DROP_LOCATION
@@ -74,11 +76,9 @@
 ##   DROP_SITE
 ##   EMPTY_BINARY_DIRECTORY
 ##   GISMO_BRANCH
-##   GISMO_SUBMODULES
 ##   LABELS_FOR_SUBPROJECTS
 ##   PROJECT_NAME
 ##   UPDATE_REPO
-##   UPDATE_MODULES
 ##   UPDATE_TYPE
 ##
 ## Environment
@@ -171,38 +171,6 @@ endif()
 if(DEFINED CXXNAME)
   find_program (CXX NAMES ${CXXNAME})
   set(ENV{CXX}  ${CXX})
-endif()
-
-# Other Environment variables and scripts
-#set(ENV{OMP_NUM_THREADS} 3)
-#set(ENV{CXXFLAGS} "-Ofast")
-#execute_process(COMMAND source "/path/to/iccvars.sh intel64")
-#set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
-#set(ENV{MAKEFLAGS} "-j12")
-
-# Build options
-if(NOT DEFINED CMAKE_ARGS)
-  set(CMAKE_ARGS
-    -DGISMO_WARNINGS=OFF
-    -DGISMO_COEFF_TYPE=double
-    -DGISMO_BUILD_LIB=ON
-    #-DCMAKE_CXX_STANDARD=11
-    -DGISMO_BUILD_EXAMPLES=ON
-    -DGISMO_BUILD_UNITTESTS=ON
-    #-DGISMO_WITH_OPENMP=ON
-    #-DGISMO_WITH_MPI=ON
-    #-DGISMO_WITH_SPECTRA=ON
-    #-DGISMO_WITH_IPOPT=ON -DIpOpt_DIR=/path/to/ipopt
-    #-DGISMO_WITH_PSOLID=ON -DParasolid_DIR=/path/to/parasolid
-    #-DGISMO_BUILD_AXL=ON -DAxel_DIR=/path/to/axel
-    -DGISMO_WITH_ONURBS=ON
-    -DGISMO_WITH_TRILINOS=OFF
-    -DGISMO_WITH_SPECTRA=OFF
-    -DGISMO_EXTRA_DEBUG=OFF
-    -DGISMO_BUILD_PCH=OFF
-    #-DGISMO_PLAINDOX=ON
-    -DNOSNIPPETS=OFF
-    )
 endif()
 
 # Source folder (defaults inside the script directory)
@@ -317,12 +285,6 @@ if (NOT DEFINED GISMO_BRANCH) #for initial checkout
   set(GISMO_BRANCH stable)
 endif()
 
-# Update modules with fetch HEAD commits for all initialized
-# submodules
-if (NOT DEFINED UPDATE_MODULES)
-  set(UPDATE_MODULES OFF)
-endif()
-
 # For continuous builds, number of seconds to stay alive
 set(test_runtime 43200) #12h by default
 
@@ -374,43 +336,10 @@ endif()
 
 if("x${UPDATE_TYPE}" STREQUAL "xgit")
 
-  if (NOT "x${GISMO_SUBMODULES}" STREQUAL "x")
-    foreach (submod ${GISMO_SUBMODULES})
-      #string(TOUPPER ${submod} csubmod)
-      #set(SUBM_ARGS ${SUBM_ARGS} -D${csubmod}=ON)
-      if ("x${submod}" STREQUAL "xunsupported")
-	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_UNSUPPORTED=ON)
-      endif()
-      if ("x${submod}" STREQUAL "xmotor")
-	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_MOTOR=ON)
-      endif()
-      if ("x${submod}" STREQUAL "xgsElasticity")
-	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_ELASTICITY=ON)#GSELASTICITY=ON
-      endif()
-      if ("x${submod}" STREQUAL "xgsExastencils")
-	set(SUBM_ARGS ${SUBM_ARGS} -DGISMO_EXASTENCILS=ON)
-      endif()
-    endforeach()
-  endif()
-
-  foreach (submodule ${GISMO_SUBMODULES})
-    if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
-      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule update --init extensions/${submodule}
-	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY})
-    endif()
-    if( NOT EXISTS "${CTEST_SOURCE_DIRECTORY}/extensions/${submodule}/.git" )
-      message(SEND_ERROR "Problem fetching ${submodule}")
-    endif()
-
-    if(${UPDATE_MODULES})
-      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
-	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
-    endif()
-  endforeach()
-  if(${UPDATE_MODULES})
-    set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
-    unset(CTEST_GIT_UPDATE_OPTIONS)
-  endif()
+  #if(${UPDATE_MODULES})
+  #  set(CTEST_GIT_UPDATE_CUSTOM ${CTEST_UPDATE_COMMAND} pull)
+  #  unset(CTEST_GIT_UPDATE_OPTIONS)
+  #endif()
 endif()
 
 if("${CTEST_CMAKE_GENERATOR}" MATCHES "Make" OR "${CTEST_CMAKE_GENERATOR}" MATCHES "Ninja")
@@ -447,19 +376,40 @@ if(NOT DEFINED CTEST_BUILD_NAME)
   #  execute_process(COMMAND "${UNAME}" "-s" OUTPUT_VARIABLE osname OUTPUT_STRIP_TRAILING_WHITESPACE)
   #  execute_process(COMMAND "${UNAME}" "-m" OUTPUT_VARIABLE "cpu" OUTPUT_STRIP_TRAILING_WHITESPACE)
   #  set(CTEST_BUILD_NAME "${osname}-${cpu} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${CNAME}")
-  if(${UPDATE_MODULES})
-    set(smHead "(head)")
-  endif()
   get_filename_component(cxxnamewe "${CXXNAME}" NAME_WE)
   set(CTEST_BUILD_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR} ${CTEST_CMAKE_GENERATOR}-${CTEST_CONFIGURATION_TYPE}-${cxxnamewe}${smHead}")
 endif()
 STRING(REPLACE " " "_" CTEST_BUILD_NAME "${CTEST_BUILD_NAME}")
+
+# Other Environment variables and scripts
+#set(ENV{OMP_NUM_THREADS} 3)
+#set(ENV{CXXFLAGS} "-Ofast")
+#execute_process(COMMAND source "/path/to/iccvars.sh intel64")
+#set(ENV{LD_LIBRARY_PATH} /path/to/vendor/lib)
+#set(ENV{MAKEFLAGS} "-j12")
+
+# Build options
+if(NOT DEFINED CMAKE_ARGS)
+  set(CMAKE_ARGS
+    -DSITE=${CTEST_SITE}
+    -DBUILDNAME=${CTEST_BUILD_NAME}
+    -DGISMO_SUBMODULES_HEAD=ON
+    -DGISMO_WITH_WARNINGS=OFF
+    -DGISMO_COEFF_TYPE=double
+    -DGISMO_BUILD_LIB=ON
+    #-DCMAKE_CXX_STANDARD=11
+    -DGISMO_BUILD_EXAMPLES=ON
+    -DGISMO_BUILD_UNITTESTS=ON
+    -DNOSNIPPETS=OFF
+    )
+endif()
 
 #Output details
 message("Site: ${CTEST_SITE}")
 message("Build Name: ${CTEST_BUILD_NAME}")
 string(TIMESTAMP TODAY "%Y-%m-%d")
 message("Date: ${TODAY}")
+message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&date=${TODAY}&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
 
 if(NOT CTEST_BUILD_JOBS)
   include(ProcessorCount)
@@ -498,15 +448,7 @@ macro(get_git_status res)
       WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
       OUTPUT_STRIP_TRAILING_WHITESPACE
       OUTPUT_VARIABLE commitMessage)
-    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule status
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      OUTPUT_VARIABLE submoduleHashes)
-    execute_process(COMMAND ${CTEST_UPDATE_COMMAND} submodule summary
-      WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      OUTPUT_VARIABLE submoduleSummary)
-    set(${res} "${commitMessage}\n\nSubmodule status:\n${submoduleHashes}\n\nSubmodule summary:\n${submoduleSummary}\n")
+    set(${res} "${commitMessage}\n")
   endif()
 endmacro(get_git_status)
 
@@ -541,20 +483,6 @@ macro(update_gismo ug_ucount)
   endif()
   set(ug_updlog " ${${ug_ucount}} gismo\n")    
 
-  if(${UPDATE_MODULES})
-    foreach (submodule ${GISMO_SUBMODULES})
-      execute_process(COMMAND ${CTEST_UPDATE_COMMAND} checkout master
-	WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule})
-      ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY}/extensions/${submodule} RETURN_VALUE ug_upd_sm)
-      set(ug_updlog "${ug_updlog} ${ug_upd_sm} extensions/${submodule}\n")
-      if (${ug_upd_sm} GREATER 0)
-	math(EXPR ${ug_ucount} "${${ug_ucount}} + ${ug_upd_sm}")
-      endif()
-      if(${ug_upd_sm} LESS 0)
-        message(SEND_ERROR "Git update submodule error")
-      endif()
-    endforeach()
-  endif()
   get_git_status(gitstatus)
   file(WRITE ${CTEST_BINARY_DIRECTORY}/gitstatus.txt "Revision:\n${gitstatus}\nUpdates:\n${ug_updlog}")
 endmacro(update_gismo)
@@ -589,7 +517,7 @@ macro(run_ctests)
   if(DEFINED KEEPCONFIG)
     ctest_configure(RETURN_VALUE confResult)
   else()
-    ctest_configure(OPTIONS "${CMAKE_ARGS};${SUBM_ARGS};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}"  RETURN_VALUE confResult)
+    ctest_configure(OPTIONS "${CMAKE_ARGS};-DGISMO_OPTIONAL=${GISMO_OPTIONAL};-DCTEST_USE_LAUNCHERS=${CTEST_USE_LAUNCHERS};-DBUILD_TESTING=ON;-DDART_TESTING_TIMEOUT=${CTEST_TEST_TIMEOUT}" RETURN_VALUE confResult)
   endif()
 
   if(EXISTS ${CTEST_BINARY_DIRECTORY}/gitstatus.txt)
@@ -602,6 +530,8 @@ macro(run_ctests)
 
   if (NOT confResult EQUAL 0)
     message(SEND_ERROR "CMake Configuration failed.")
+    message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=Gismo&date=${TODAY}&filtercount=2&showfilters=0&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
+    return()
   endif()
 
   #"${CMAKE_VERSION}" VERSION_LESS "3.10"
@@ -613,9 +543,9 @@ macro(run_ctests)
         set_property(GLOBAL PROPERTY SubProject ${subproject})
         set_property(GLOBAL PROPERTY Label ${subproject})
       endif()
-      ctest_build(TARGET ${subproject} APPEND)
+      ctest_build(TARGET ${subproject} APPEND CONFIGURATION ${CTEST_CONFIGURATION_TYPE})
       ctest_submit(PARTS Build  RETRY_COUNT 3 RETRY_DELAY 3)
-      if (DO_TESTS)
+      if (DO_TESTS AND NOT "x${subproject}" STREQUAL "xgismo")
 	ctest_test(INCLUDE_LABEL "${subproject}" PARALLEL_LEVEL ${CTEST_TEST_JOBS} RETURN_VALUE testResult)
 	if (narg GREATER 0 AND NOT testResult EQUAL 0)
 	  set(${ARGV0} -1)
@@ -687,7 +617,7 @@ if(NOT "${CTEST_TEST_MODEL}" STREQUAL "Continuous")
   endif()
   run_ctests(res)
 
-  message("CDASH LINK:\nhttps://cdash-ci.inria.fr/index.php?project=${CTEST_PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
+  message("CDASH LINK:\nhttps://cdash-ci.irisa.fr/index.php?project=${CTEST_PROJECT_NAME}&date=${TODAY}&filtercount=2&showfilters=1&filtercombine=and&field1=buildname&compare1=61&value1=${CTEST_BUILD_NAME}&field2=site&compare2=65&value2=${CTEST_SITE}")
 
   if(NOT res EQUAL 0)
     message(SEND_ERROR "Some Tests failed.")

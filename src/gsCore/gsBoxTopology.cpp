@@ -18,6 +18,25 @@
 namespace gismo
 {
 
+#ifdef GISMO_WITH_PYBIND11
+
+  namespace py = pybind11;
+
+  void pybind11_init_gsBoxTopology(py::module &m)
+  {
+    using Class = gsBoxTopology;
+    py::class_<Class>(m, "gsBoxTopology")
+
+      // Constructors
+      .def(py::init<>())
+      .def("boundaries", static_cast<std::vector< patchSide >& (Class::*)()> (&Class::boundaries))
+      .def("interfaces", static_cast<std::vector< boundaryInterface >& (Class::*)()> (&Class::interfaces))
+
+      ;
+  }
+
+#endif
+
 std::ostream & gsBoxTopology::print(std::ostream &os) const
 {
     if ( nboxes > 0 )
@@ -70,6 +89,15 @@ void gsBoxTopology::addAutoBoundaries()
             }
         }
     }
+}
+
+gsBoxTopology::ifContainer gsBoxTopology::selectInterfaces(interaction::type ifc_type) const
+{
+    ifContainer result;
+    for ( size_t i = 0; i < m_interfaces.size(); ++i )
+        if ( m_interfaces[i].type() == interaction::contact)
+            result.push_back(m_interfaces[i]);
+    return result;
 }
 
 bool gsBoxTopology::isInterface( const patchSide& ps ) const
@@ -144,6 +172,17 @@ const boundaryInterface * gsBoxTopology::findInterface(const index_t b1, const i
     }
     return NULL;
 }
+
+patchSide * gsBoxTopology::getBoundary(const patchSide& ps )
+{
+    for ( size_t i = 0; i < m_boundary.size(); ++i )
+    {
+        if ( (m_boundary[i] == ps) )
+            return & m_boundary[i];
+    }
+    return NULL;
+}
+
 
 bool gsBoxTopology::getCornerList(const patchCorner& start,std::vector<patchCorner> & cornerList) const
 {
@@ -300,7 +339,7 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
     return result;
 }
 
-void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists) const
+void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists, bool boundaries) const
 {
     GISMO_ASSERT(m_dim==2,"works only for 2D");
     cornerLists.clear();
@@ -316,11 +355,13 @@ void gsBoxTopology::getEVs(std::vector<std::vector<patchCorner> > & cornerLists)
             for(size_t k = 0;k<cornerList.size();++k)
                 if(cornerList[k].patch<i)
                     alreadyReached = true;
-            if(isCycle&&cornerList.size()!=4&&!alreadyReached)
+
+            if(((isCycle&&cornerList.size()!=4)||(boundaries&&(!isCycle)&&cornerList.size()>2))&&!alreadyReached)
                 cornerLists.push_back(cornerList);
         }
     }
 }
+
 
 void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists) const
 {
@@ -343,4 +384,28 @@ void gsBoxTopology::getOVs(std::vector<std::vector<patchCorner> > & cornerLists)
         }
     }
 }
+
+std::vector<std::vector<patchCorner>> gsBoxTopology::vertices() const
+{
+    std::vector<std::vector<patchCorner>> allCorners;
+    for (index_t n = 0; n < nboxes; ++n)
+    {
+        for(index_t j=1;j<=4;++j)
+        {
+            std::vector<patchCorner> cornerLists;
+            patchCorner start(n, j);
+            getCornerList(start, cornerLists);
+            bool alreadyReached = false;
+            for(size_t k = 0;k<allCorners.size();++k)
+                for(size_t l = 0;l<allCorners[k].size();++l)
+                    if(allCorners[k][l].patch==n && allCorners[k][l].m_index==j)
+                        alreadyReached = true;
+            if (cornerLists.size() > 0 && !alreadyReached)
+                allCorners.push_back(cornerLists);
+        }
+    }
+
+    return allCorners;
+}
+
 }

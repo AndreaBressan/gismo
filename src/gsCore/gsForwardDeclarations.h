@@ -29,6 +29,30 @@
 #include <gsCore/gsMemory.h>
 #include <gsUtils/gsUtils.h>
 
+#ifdef gsMpfr_ENABLED
+#include <mpreal.h>
+#endif
+
+#ifdef gsGmp_ENABLED
+#include <gmpxx.h>
+#include <unsupported/Eigen/MPQClassExtra>
+#endif
+
+#ifdef gsUniversal_ENABLED
+#include <gsUniversal/gsUniversal.h>
+#endif
+
+#ifdef gsCoDiPack_ENABLED
+#include <gsCoDiPack/gsCoDiPack.h>
+#endif
+
+#ifdef GISMO_WITH_PYBIND11
+#include <pybind11/iostream.h>
+#include <pybind11/operators.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#endif
+
 namespace gismo
 {
 
@@ -44,14 +68,14 @@ enum gsNeedEnum
     NEED_VALUE             = 1U << 0, ///< Value of the object
     NEED_DERIV             = 1U << 1, ///< Gradient of the object
     NEED_GRAD              = NEED_DERIV,
-    NEED_JACOBIAN          = 1U << 2, ///< Jacobian of the object
+    NEED_JACOBIAN          = NEED_DERIV, ///< Jacobian of the object
     NEED_MEASURE           = 1U << 3, ///< The density of the measure pull back
     NEED_GRAD_TRANSFORM    = 1U << 4, ///< Gradient transformation matrix
     NEED_DIV               = 1U << 5, ///< Div operator
     NEED_CURL              = 1U << 6, ///< Curl operator
     NEED_DERIV2            = 1U << 7, ///< Second derivatives
     NEED_2ND_DER           = NEED_DERIV2,
-    NEED_HESSIAN           = 1U << 8, ///< Hessian matrix
+    NEED_HESSIAN           = NEED_DERIV2, ///< Hessian matrix
     NEED_LAPLACIAN         = 1U << 9, ///< Laplacian
     NEED_ACTIVE            = 1U <<10, ///< Active function ids
     NEED_NORMAL            = 1U <<11, ///< Normal vector of the object
@@ -115,6 +139,7 @@ template <class T=real_t>                class gsMultiPatch;
 template <class basis_t >                class gsRationalBasis;
 template <short_t d, class T=real_t>     class gsTensorBasis;
 template <short_t d, class T=real_t>     class gsHTensorBasis;
+template <short_t d, class T=real_t>     class gsMappedBasis;
 
 template <class T=real_t>                class gsKnotVector;
 //template <class T=real_t>              class gsCompactKnotVector;
@@ -144,10 +169,12 @@ template <short_t d, class T=real_t>     class gsTensorNurbs;
 template <short_t d, class T=real_t>     class gsTensorBezier;
 template <short_t d, class T=real_t>     class gsHBSpline;
 template <class T=real_t>                class gsTrimSurface;
+template <short_t d, class T=real_t>     class gsMappedSpline;
 
 // Quadrature rules
 template <class T=real_t>                class gsQuadRule;
 template <class T=real_t>                class gsGaussRule;
+template <class T=real_t>                class gsNewtonCotesRule;
 template <class T=real_t>                class gsGalerkinMethod;
 
 // Domains
@@ -281,6 +308,31 @@ template <class T=real_t>                class gsIetiMapper;
 template <class T=real_t>                class gsIetiSystem;
 template <class T=real_t>                class gsPrimalSystem;
 template <class T=real_t>                class gsScaledDirichletPrec;
+
+template <short_t d, class T=real_t>     struct gsHBoxUtils;
+template <short_t d, class T=real_t>     struct gsHBoxContains;
+template <short_t d, class T=real_t>     struct gsHBoxIsContained;
+template <short_t d, class T=real_t>     struct gsHBoxCompare;
+template <short_t d, class T=real_t>     struct gsHBoxEqual;
+
+template <short_t d, class T=real_t>     class gsHBox;
+template <short_t d, class T=real_t>     class gsHBoxContainer;
+
+class gsParaviewDataSet;
+class gsSurfMesh;
+
+// gsIO
+
+template<class T>
+void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
+                           gsMatrix<T> const& data,
+                           const gsVector<index_t> & np,
+                           std::string const & fn);
+
+template <class T>
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
+
+
 
 /// @endcond
 

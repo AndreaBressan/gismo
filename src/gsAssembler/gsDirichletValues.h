@@ -12,6 +12,9 @@
 */
 
 #include <gsUtils/gsPointGrid.h>
+#include <gsCore/gsDofMapper.h>
+#include <gsAssembler/gsAssemblerOptions.h>
+#include <gsPde/gsBoundaryConditions.h>
 
 namespace gismo {
 
@@ -26,43 +29,46 @@ void gsDirichletValues(
     const index_t dir_values,
     const expr::gsFeSpace<T> & u)
 {
-    if ( bc.container("Dirichlet").empty() ) return;
+    if ( bc.container("Dirichlet").empty() && bc.cornerValues().empty()) return;
 
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
+    fixedDofs.setZero(u.mapper().boundarySize(), 1 );
 
     switch ( dir_values )
     {
     case dirichlet::homogeneous :
     case dirichlet::user :
         // If we have a homogeneous problem then fill with zeros
-        fixedDofs.setZero( mapper.boundarySize(), 1 );
         break;
     case dirichlet::interpolation:
         gsDirichletValuesByTPInterpolation(u,bc);
         break;
     case dirichlet::l2Projection:
-        gsDirichletValuesL2Projection(u,bc);
+        gsDirichletValuesByL2Projection(u,bc);
         break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values: "<< dir_values);
     }
 
-    /* Corner values -- todo
-       for ( typename gsBoundaryConditions<T>::const_citerator
-       it = bbc.cornerBegin();
-       it != bbc.cornerEnd(); ++it )
-       {
-       if(it->unknown == unk)
-       {
-       const int i  = mbasis[it->patch].functionAtCorner(it->corner);
-       const int ii = mapper.bindex( i , it->patch );
-       u.fixedPart().row(ii).setConstant(it->value);
-       }
-       else
-       continue;
-       }
-    */
+     // Corner values -- todo
+    for ( typename gsBoundaryConditions<T>::const_citerator it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
+    {
+        if(it->unknown != u.id())
+            continue;
+
+        const int k = it->patch;
+        const gsBasis<T> & basis = u.source().basis(k);
+        const int i  = basis.functionAtCorner(it->corner);
+        const index_t com = it->component;
+
+        for (index_t r = 0; r!=u.dim(); ++r)
+        {
+            if (com!=-1 && r!=com) continue;
+            const int ii = mapper.bindex( i , k, r );
+            fixedDofs.at(ii) = it->value;
+        }
+    }
 }
 
 template<class T>
@@ -77,8 +83,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     gsMatrix<T> fpts, tmp;
 
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
-    fixedDofs.resize(u.mapper().boundarySize(), 1 );
-    fixedDofs.setZero();
+    fixedDofs.setZero(u.mapper().boundarySize(), 1 );
 
     // Iterate over all patch-sides with Boundary conditions
     typedef gsBoundaryConditions<T> bcList;
@@ -88,16 +93,24 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
         if( it->unknown()!=u.id() ) continue;
 
         const index_t com = it->unkComponent();
+
+        const int k = it->patch();
+        const gsBasis<T> & basis = u.source().basis(k);
+
+        // Get dofs on this boundary
+        boundary = basis.boundary(it->side());
+
+        // Get the side information
+        const int dir = it->side().direction( );
+        const index_t param = (it->side().parameter() ? 1 : 0);
+
+        // Get basis on the boundary
+        typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
+
         //
         for (index_t r = 0; r!=u.dim(); ++r)
         {
             if (com!=-1 && r!=com) continue;
-
-            const int k = it->patch();
-            const gsBasis<T> & basis = u.source().basis(k);
-
-            // Get dofs on this boundary
-            boundary = basis.boundary(it->side());
 
             // If the condition is homogeneous then fill with zeros
             if ( it->isHomogeneous() )
@@ -109,10 +122,6 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                 }
                 continue;
             }
-
-            // Get the side information
-            const int dir = it->side().direction( );
-            const index_t param = (it->side().parameter() ? 1 : 0);
 
             // Compute grid of points on the face ("face anchors")
             rr.clear();
@@ -145,9 +154,8 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             }
 
             // Interpolate dirichlet boundary
-            typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
             typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-            const gsMatrix<T> & dVals =  geo->coefs();
+            const gsMatrix<T> & dVals = geo->coefs();
 
             // Save corresponding boundary dofs
             for (index_t l=0; l!= boundary.size(); ++l)
@@ -159,7 +167,7 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     }
 }
 
-
+// Not called and used, todo
 template<class T> void
 gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
                                  const boundary_condition<T> & bc,
@@ -246,8 +254,8 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
 
 
 template<class T>
-void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
-                                    const gsBoundaryConditions<T> & bc)
+void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
+                                      const gsBoundaryConditions<T> & bc)
 {
     const gsFunctionSet<T> & gmap = bc.geoMap();
 
@@ -281,8 +289,7 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
         const int unk = iter->unknown();
         if(unk != u.id()) continue;
 
-        const index_t com = iter->unkComponent();// == -1 ? 0 : iter->unkComponent(); // TODO should loop
-
+        const index_t com = iter->unkComponent();
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = u.source().basis(patchIdx);
         const gsFunction<T> & patch = gmap.function(patchIdx);
@@ -353,18 +360,30 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
                 // to rhsVals. Here, "rhs" refers to the right-hand-side
                 // of the L2-projection, not of the PDE.
 
-                // If the condition is homogeneous then fill with zeros
-                if ( iter->isHomogeneous() )
+                // if the component is not specified and the function evaluates
+                // for all target dimensions simultaneous, rhsValues does not
+                // need to be updated
+                if ((com != -1) || (r == 0))
                 {
-                    rhsVals.setZero(1,md.points.size());
-                }
-                else
-                {
-                    if ( iter->parametric() )
-                        rhsVals = iter->function()->piece(patchIdx).eval(md.points);
+                  // If the condition is homogeneous then fill with zeros
+                  if (iter->isHomogeneous())
+                  {
+                    rhsVals.setZero(u.dim(), md.points.size());
+                  }
+                  else
+                  {
+                    if (iter->parametric())
+                      rhsVals =
+                          iter->function()->piece(patchIdx).eval(md.points);
                     else
-                        rhsVals = iter->function()->piece(patchIdx).eval(gmap.piece(patchIdx).eval(md.points));
+                      rhsVals = iter->function()->piece(patchIdx).eval(
+                          gmap.piece(patchIdx).eval(md.points));
+                  }
                 }
+
+                GISMO_ASSERT((com!=-1) || rhsVals.rows() == u.dim(),
+                    "If no component is specified for Dirichlet boundary, "
+                    "target dimension must match field dimension.");
 
                 // Do the actual assembly:
                 for (index_t k = 0; k < md.points.cols(); k++)
@@ -392,7 +411,7 @@ void gsDirichletValuesL2Projection( const expr::gsFeSpace<T> & u,
                             projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
                         } // for j
 
-                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals.at(k);
+                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(r,k);
 
                     } // for i
                 } // for k

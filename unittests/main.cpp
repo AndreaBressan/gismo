@@ -21,6 +21,8 @@
     ...
     (gdb) bt
     ...     see backtrack to find error
+    (gdb) bt
+    (gdb) bt full
     (gdb) quit
 
     Author(s): A. Mantzaflaris,  H. Weiner, J. Vogl
@@ -47,7 +49,7 @@ struct gsUTSelector
     { return true; }
 };
 
-#ifdef GISMO_WITH_GMP
+#ifdef gsGmp_ENABLED
 template<>
 struct gsUTSelector<mpq_class>
 {
