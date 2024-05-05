@@ -311,8 +311,8 @@ void gsMatrixCrossApproximation_3<T>::compute(bool pivot, index_t maxIter, T zer
 	if(!nextIteration(sigma, uVec, vVec, pivot, zero) || i >= maxIter || stopcrit())
 	{
 	    gsInfo << "Finishing at rank " << i << "." << std::endl;
-	    m_U.conservativeResize(Eigen::NoChange, i);
-	    m_V.conservativeResize(Eigen::NoChange, i);
+	    m_U.conservativeResize(gsEigen::NoChange, i);
+	    m_V.conservativeResize(gsEigen::NoChange, i);
 	    m_T.conservativeResize(i, i);
 	    return;
 	}

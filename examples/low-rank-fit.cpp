@@ -406,7 +406,7 @@ void sampleParamsAndWeights(const gsBSplineBasis<T>& basis,
 
 	// Append locParams to globParams.
 	start = globParams.cols();
-	globParams.conservativeResize(Eigen::NoChange, start + locParams.cols());
+	globParams.conservativeResize(gsEigen::NoChange, start + locParams.cols());
 	globParams.block(0, start, globParams.rows(), locParams.cols()) = locParams;
 
 	// Append locWeights to weights.

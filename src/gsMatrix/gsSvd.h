@@ -27,7 +27,7 @@ public:
     gsSvd(const gsMatrix<T>& mat)
 	: m_Z(mat)
     {
-	Eigen::JacobiSVD< Eigen::Matrix<real_t, Dynamic, Dynamic> > svd(mat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+	gsEigen::JacobiSVD<gsEigen::Matrix<real_t, Dynamic, Dynamic> > svd(mat, gsEigen::ComputeFullU | gsEigen::ComputeFullV);
 	m_U = svd.matrixU();
 	m_S = svd.singularValues();
 	m_V = svd.matrixV();

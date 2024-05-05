@@ -98,16 +98,16 @@ gsMatrix<T> gsLowRankFitting<T>::getErrorsMN(size_t rows) const
 template <class T>
 void gsLowRankFitting<T>::initPQ(const gsMatrix<T>& uWeights, const gsMatrix<T>& vWeights)
 {
-    gsBSplineBasis<T> uBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(0))));
-    gsBSplineBasis<T> vBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(1))));
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsBSplineBasis<T> uBasis = tpBasis->component(0);
+    gsBSplineBasis<T> vBasis = tpBasis->component(1);
 
     gsMatrix<T> uPar, vPar;
     //index_t uNum = partitionParam(uPar, vPar);
     partitionParam(uPar, vPar);
 
-    gsSparseMatrix<T> Xs, Ys;
-    uBasis.collocationMatrix(uPar, Xs);
-    vBasis.collocationMatrix(vPar, Ys);
+    gsSparseMatrix<T> Xs = uBasis.collocationMatrix(uPar);
+    gsSparseMatrix<T> Ys = vBasis.collocationMatrix(vPar);
     m_X = gsMatrix<T>(Xs.transpose());
     m_Y = gsMatrix<T>(Ys.transpose());
 
@@ -126,8 +126,9 @@ void gsLowRankFitting<T>::computeSVD(index_t sample, const std::string& filename
 {
     clearErrors();
 
-    gsBSplineBasis<T> uBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(0))));
-    gsBSplineBasis<T> vBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(1))));
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsBSplineBasis<T> uBasis = tpBasis->component(0);
+    gsBSplineBasis<T> vBasis = tpBasis->component(1);
 
     gsMatrix<T> coefs(uBasis.size(), vBasis.size());
     coefs.setZero();
@@ -161,7 +162,7 @@ void gsLowRankFitting<T>::computeSVD(index_t sample, const std::string& filename
 	coefs += pointSVD.s(r) * matrixUtils::tensorProduct(uCoefs, vCoefs);
 
 	delete this->m_result;
-	this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+	this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
 	this->computeErrors();
 	T maxErr = this->maxPointError();
 	//gsInfo << "err SVD: " << maxErr << std::endl;
@@ -186,8 +187,9 @@ void gsLowRankFitting<T>::computeCross(bool pivot,
 				       index_t maxIter,
 				       index_t sample)
 {
-    gsMatrix<T> coefs(this->m_basis->component(0).size(),
-		      this->m_basis->component(1).size());
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsMatrix<T> coefs(tpBasis->component(0).size(),
+		      tpBasis->component(1).size());
     coefs.setZero();
 
     index_t uNum = math::sqrt(this->m_param_values.cols());
@@ -207,7 +209,7 @@ void gsLowRankFitting<T>::computeCross(bool pivot,
 
 	coefs = coefs + sigma * (m_P * uMat * (m_Q * vMat).transpose());
 	delete this->m_result;
-	this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+	this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
 	this->computeErrors();
 	T maxErr = this->maxPointError();
 	T l2Err = L2Error(*static_cast<gsTensorBSpline<2, T>*>(this->result()), sample);
@@ -227,8 +229,9 @@ void gsLowRankFitting<T>::computeCross_3(bool pivot,
 					 index_t maxIter,
 					 index_t sample)
 {
-    gsMatrix<T> coefs(this->m_basis->component(0).size(),
-		      this->m_basis->component(1).size());
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsMatrix<T> coefs(tpBasis->component(0).size(),
+		      tpBasis->component(1).size());
     coefs.setZero();
 
     index_t uNum = math::sqrt(this->m_param_values.cols());
@@ -243,7 +246,7 @@ void gsLowRankFitting<T>::computeCross_3(bool pivot,
     coefs = m_P * uMat * tMat * (m_Q * vMat).transpose();
 
     delete this->m_result;
-    this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+    this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
     this->computeErrors();
     T maxErr = this->maxPointError();
     T l2Err = L2Error(*static_cast<gsTensorBSpline<2, T>*>(this->result()), sample);
@@ -251,13 +254,13 @@ void gsLowRankFitting<T>::computeCross_3(bool pivot,
 
     for(int i=0; i<4; i++) // Refine; TODO: check tol.
     {
-	this->m_basis->uniformRefine();
+	tpBasis->uniformRefine();
 	// Recompute P, Q (TODO: weights).
 	initPQ(matrixUtils::identity<T>(uNum),
 	       matrixUtils::identity<T>(uNum));
 	coefs = m_P * uMat * tMat * (m_Q * vMat).transpose();
 	delete this->m_result;
-	this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+	this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
 	this->computeErrors();
 	T maxErr = this->maxPointError();
 	T l2Err = L2Error(*static_cast<gsTensorBSpline<2, T>*>(this->result()), sample);
@@ -270,8 +273,9 @@ void gsLowRankFitting<T>::computeCross_3(bool pivot,
 template <class T>
 void gsLowRankFitting<T>::computeRes()
 {
-    gsBSplineBasis<T> uBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(0))));
-    gsBSplineBasis<T> vBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(1))));
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsBSplineBasis<T> uBasis = tpBasis->component(0);
+    gsBSplineBasis<T> vBasis = tpBasis->component(1);
 
     gsMatrix<T> coefs(uBasis.size(), vBasis.size());
     coefs.setZero();
@@ -308,7 +312,7 @@ void gsLowRankFitting<T>::computeRes()
 	matrixUtils::addTensorProduct(coefs, sigma, uCoefs, vCoefs);
 
 	delete this->m_result;
-	this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+	this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
 	this->computeErrors();
 	//gsInfo << this->maxPointError() << std::endl;
 
@@ -321,16 +325,16 @@ void gsLowRankFitting<T>::computeRes()
 template <class T>
 void gsLowRankFitting<T>::computeFull(const gsVector<T>& uWeights, const gsVector<T>& vWeights)
 {
-    gsBSplineBasis<T> uBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(0))));
-    gsBSplineBasis<T> vBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(1))));
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsBSplineBasis<T> uBasis = tpBasis->component(0);
+    gsBSplineBasis<T> vBasis = tpBasis->component(1);
 
     gsMatrix<T> uPar, vPar;
     index_t uNum = partitionParam(uPar, vPar);
 
     // Note that X and Y here are the same way as in the paper, unlike the older implementation.
-    gsSparseMatrix<T> Xs, Ys;
-    uBasis.collocationMatrix(uPar, Xs);
-    vBasis.collocationMatrix(vPar, Ys);
+    gsSparseMatrix<T> Xs = uBasis.collocationMatrix(uPar);
+    gsSparseMatrix<T> Ys = vBasis.collocationMatrix(vPar);
     gsSparseMatrix<T> uWs = matrixUtils::sparseDiag(uWeights);
     gsSparseMatrix<T> vWs = matrixUtils::sparseDiag(vWeights);
 
@@ -342,12 +346,12 @@ void gsLowRankFitting<T>::computeFull(const gsVector<T>& uWeights, const gsVecto
 
     // Saving the matrices beforehand leads to a speed up of an order of magnitude.
     gsMatrix<T> rhs1 = Xs.transpose() * uWs * Z;
-    typename Eigen::SparseLU<typename gsSparseMatrix<T>::Base> solver1;
+    typename gsEigen::SparseLU<typename gsSparseMatrix<T>::Base> solver1;
     solver1.analyzePattern(lhs1);
     solver1.factorize(lhs1);
 
     gsMatrix<T> D = solver1.solve(rhs1);
-    typename Eigen::SparseLU<typename gsSparseMatrix<T>::Base> solver2;
+    typename gsEigen::SparseLU<typename gsSparseMatrix<T>::Base> solver2;
     solver2.analyzePattern(lhs2);
     solver2.factorize(lhs2);
 
@@ -357,7 +361,7 @@ void gsLowRankFitting<T>::computeFull(const gsVector<T>& uWeights, const gsVecto
     //if(printErr)
     //{
 	delete this->m_result;
-	this->m_result = this->m_basis->makeGeometry(give(convertBack(CT.transpose()).transpose())).release();
+	this->m_result = tpBasis->makeGeometry(give(convertBack(CT.transpose()).transpose())).release();
 	this->computeErrors();
 	gsInfo << "compute full, max err: " << this->maxPointError() << std::endl;
 	gsWriteParaview(*this->m_result, "result");
@@ -367,16 +371,16 @@ void gsLowRankFitting<T>::computeFull(const gsVector<T>& uWeights, const gsVecto
 template <class T>
 T gsLowRankFitting<T>::methodB(bool printErr)
 {
-    gsBSplineBasis<T> uBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(0))));
-    gsBSplineBasis<T> vBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(1))));
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsBSplineBasis<T> uBasis = tpBasis->component(0);
+    gsBSplineBasis<T> vBasis = tpBasis->component(1);
 
     gsMatrix<T> uPar, vPar;
     index_t uNum = partitionParam(uPar, vPar);
 
     // Note that X and Y here are the same way as in the paper, unlike the older implementation.
-    gsSparseMatrix<T> Xs, Ys;
-    uBasis.collocationMatrix(uPar, Xs);
-    vBasis.collocationMatrix(vPar, Ys);
+    gsSparseMatrix<T> Xs = uBasis.collocationMatrix(uPar);
+    gsSparseMatrix<T> Ys = vBasis.collocationMatrix(vPar);
 
     gsSparseMatrix<T> Z = convertToSparseMN(uNum);
 
@@ -389,7 +393,7 @@ T gsLowRankFitting<T>::methodB(bool printErr)
     gsMatrix<T> rhs1 = Xs.transpose() * Z;
 
     timef1.restart();
-    typename Eigen::SparseLU<typename gsSparseMatrix<T>::Base> solver1;
+    typename gsEigen::SparseLU<typename gsSparseMatrix<T>::Base> solver1;
     solver1.analyzePattern(lhs1);
     solver1.factorize(lhs1);
     timef1.stop();
@@ -399,7 +403,7 @@ T gsLowRankFitting<T>::methodB(bool printErr)
     times1.stop();
 
     timef2.restart();
-    typename Eigen::SparseLU<typename gsSparseMatrix<T>::Base> solver2;
+    typename gsEigen::SparseLU<typename gsSparseMatrix<T>::Base> solver2;
     solver2.analyzePattern(lhs2);
     solver2.factorize(lhs2);
     timef2.stop();
@@ -416,7 +420,7 @@ T gsLowRankFitting<T>::methodB(bool printErr)
     if(printErr)
     {
 	delete this->m_result;
-	this->m_result = this->m_basis->makeGeometry(give(convertBack(CT.transpose()).transpose())).release();
+	this->m_result = tpBasis->makeGeometry(give(convertBack(CT.transpose()).transpose())).release();
 	this->computeErrors();
 	gsInfo << "method B: " << this->maxPointError() << std::endl;
 	gsWriteParaview(*this->m_result, "result");
@@ -427,16 +431,16 @@ T gsLowRankFitting<T>::methodB(bool printErr)
 template <class T>
 T gsLowRankFitting<T>::methodC(bool printErr, index_t maxIter, bool pivot)
 {
-    gsBSplineBasis<T> uBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(0))));
-    gsBSplineBasis<T> vBasis = *(static_cast<gsBSplineBasis<T>*>(&(this->m_basis->component(1))));
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsBSplineBasis<T> uBasis = tpBasis->component(0);
+    gsBSplineBasis<T> vBasis = tpBasis->component(1);
 
     gsMatrix<T> uPar, vPar;
     index_t uNum = partitionParam(uPar, vPar);
 
     // X and Y are now the same as in the paper.
-    gsSparseMatrix<T> Xs, Ys;
-    uBasis.collocationMatrix(uPar, Xs);
-    vBasis.collocationMatrix(vPar, Ys);
+    gsSparseMatrix<T> Xs = uBasis.collocationMatrix(uPar);
+    gsSparseMatrix<T> Ys = vBasis.collocationMatrix(vPar);
 
     gsMatrix<T> Z = convertToMN(uNum);
     gsMatrixCrossApproximation_3<T> crossApp(Z, 0);
@@ -451,13 +455,13 @@ T gsLowRankFitting<T>::methodC(bool printErr, index_t maxIter, bool pivot)
     lhs2.makeCompressed();
     time.restart();
     timef.restart();
-    typename Eigen::SparseLU<typename gsSparseMatrix<T>::Base> solver1;
+    typename gsEigen::SparseLU<typename gsSparseMatrix<T>::Base> solver1;
     solver1.analyzePattern(lhs1);
     solver1.factorize(lhs1);
     // typename gsSparseSolver<T>::BiCGSTABILUT solver1(lhs1);
     // typename gsSparseSolver<T>::BiCGSTABILUT solver2(lhs2);
 
-    typename Eigen::SparseLU<typename gsSparseMatrix<T>::Base> solver2;
+    typename gsEigen::SparseLU<typename gsSparseMatrix<T>::Base> solver2;
     solver2.analyzePattern(lhs2);
     solver2.factorize(lhs2);
     timef.stop();
@@ -509,7 +513,7 @@ T gsLowRankFitting<T>::methodC(bool printErr, index_t maxIter, bool pivot)
     if(printErr)
     {
 	delete this->m_result;
-	this->m_result = this->m_basis->makeGeometry(give(convertBack(dMat * tMat * eMat.transpose()).transpose())).release();
+	this->m_result = tpBasis->makeGeometry(give(convertBack(dMat * tMat * eMat.transpose()).transpose())).release();
 	this->computeErrors();
 	gsInfo << "method C: " << this->maxPointError() << std::endl;
 	gsWriteParaview(*this->m_result, "result");
@@ -603,9 +607,9 @@ void gsLowRankFitting<T>::CR2I_new(const gsMatrix<T>& bott,
     gsMatrix<T> coefs(uBasis.size(), vBasis.size());
     coefs.setZero();
 
-    gsSparseMatrix<T> Xs, Ys;
-    uBasis.collocationMatrix(uPar, Xs);
-    vBasis.collocationMatrix(vPar, Ys);
+    gsSparseMatrix<T> Xs = uBasis.collocationMatrix(uPar);
+    gsSparseMatrix<T> Ys = vBasis.collocationMatrix(vPar);
+
     gsMatrix<T> X(Xs.transpose());
     gsMatrix<T> Y(Ys.transpose());
 
@@ -647,8 +651,9 @@ void gsLowRankFitting<T>::computeCrossWithRef(bool pivot,
 					      index_t maxIter,
 					      index_t sample)
 {
-    gsMatrix<T> coefs(this->m_basis->component(0).size(),
-		      this->m_basis->component(1).size());
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+    gsMatrix<T> coefs(tpBasis->component(0).size(),
+		      tpBasis->component(1).size());
     coefs.setZero();
 
     index_t uNum = math::sqrt(this->m_param_values.cols());
@@ -676,7 +681,7 @@ void gsLowRankFitting<T>::computeCrossWithRef(bool pivot,
 
 	coefs = coefs + sigma * (m_P * uMat.col(i) * (m_Q * vMat.col(i)).transpose());
 	delete this->m_result;
-	this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+	this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
 	this->computeErrors();
 	T maxErr = this->maxPointError();
 	T l2Err = L2Error(*static_cast<gsTensorBSpline<2, T>*>(this->result()), sample);
@@ -689,7 +694,7 @@ void gsLowRankFitting<T>::computeCrossWithRef(bool pivot,
 	{
 	    // Refine.
 	    gsInfo << "Refining at rank " << i+1 << std::endl;
-	    this->m_basis->uniformRefine(); // _withCoefs does not make it any better. (-;
+	    tpBasis->uniformRefine(); // _withCoefs does not make it any better. (-;
 
 	    // Recompute P, Q (TODO: weights).
 	    initPQ(matrixUtils::identity<T>(uNum),
@@ -705,7 +710,7 @@ void gsLowRankFitting<T>::computeCrossWithRef(bool pivot,
 	    // 	coefs += tMat(j, j) * (m_P * uMat.col(j) * (m_Q * vMat.col(j)).transpose());
 
 		delete this->m_result;
-		this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+		this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
 		this->computeErrors();
 		T maxErr = this->maxPointError();
 		T l2Err = L2Error(*static_cast<gsTensorBSpline<2, T>*>(this->result()), sample);
@@ -733,6 +738,8 @@ void gsLowRankFitting<T>::computeCrossWithRef(bool pivot,
 template <class T>
 void gsLowRankFitting<T>::computeCrossWithRefAndStop(T tol, bool pivot)
 {
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+
     gsMatrix<T> coefs;
 
     index_t uNum = math::sqrt(this->m_param_values.cols());
@@ -816,14 +823,14 @@ void gsLowRankFitting<T>::computeCrossWithRefAndStop(T tol, bool pivot)
 	else
 	{
 	    gsInfo << "refining at rank " << i << std::endl;
-	    this->m_basis->uniformRefine();
+	    tpBasis->uniformRefine();
 	    // Recompute P, Q (TODO: weights).
 	    initPQ(matrixUtils::identity<T>(uNum),
 		   matrixUtils::identity<T>(uNum));
 	}
     }
     delete this->m_result;
-    this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+    this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
     this->computeErrors();
     gsInfo << "old err: " << this->get_l2Error()  << std::endl;
 
@@ -838,12 +845,14 @@ void gsLowRankFitting<T>::computeCrossWithRefAndStop(T tol, bool pivot)
 template <class T>
 int gsLowRankFitting<T>::computeCrossWithStop(T epsAccept, T epsAbort, bool pivot, bool verbose)
 {
+    auto tpBasis = static_cast<gsTensorBSplineBasis<2, T>*>(this->m_basis);
+
     gsMatrix<T> coefs;
 
     index_t uNum = m_uNpts;
     index_t vNum = this->m_param_values.cols() / uNum;
     gsMatrix<T> ptsMN = convertToMN(uNum);
-    Eigen::ColPivHouseholderQR<gsMatrix<T>> qrDecomp(ptsMN);
+    gsEigen::ColPivHouseholderQR<gsMatrix<T>> qrDecomp(ptsMN);
 
     if(verbose)
 	gsInfo << "data rank: " << qrDecomp.rank() << std::endl;
@@ -913,7 +922,7 @@ int gsLowRankFitting<T>::computeCrossWithStop(T epsAccept, T epsAbort, bool pivo
 	// ... and the L2-error as well, if required.
 	if(m_sample != -1)
 	{
-	    this->m_result=this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+	    this->m_result=tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
 	    m_L2Err.push_back(L2Error(*(this->m_result), m_sample, T(1), 0, false));
 	}
 
@@ -956,7 +965,7 @@ int gsLowRankFitting<T>::computeCrossWithStop(T epsAccept, T epsAbort, bool pivo
 	}
     }
     delete this->m_result;
-    this->m_result = this->m_basis->makeGeometry(give(convertBack(coefs).transpose())).release();
+    this->m_result = tpBasis->makeGeometry(give(convertBack(coefs).transpose())).release();
     this->computeErrors();
     gsInfo << "l2E: " << l2Err << std::endl;
     gsInfo << "Decomposition time: " << sumTimes << std::endl;

@@ -120,7 +120,7 @@ namespace gismo
 		gsWarn << "wrong sizes " << mat.rows() << " != " << vec.size() << std::endl;
 
 	    index_t oldCols = mat.cols();
-	    mat.conservativeResize(Eigen::NoChange, oldCols + 1);
+	    mat.conservativeResize(gsEigen::NoChange, oldCols + 1);
 	    mat.col(oldCols) = vec;
 	}
 
